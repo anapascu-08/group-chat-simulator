@@ -8,23 +8,28 @@ Fiecare student implementează acest spec în propriul repo.
 
 ## Personas
 
-Fiecare persona e definit într-un fișier `.md` cu două câmpuri:
+Toate personas sunt definite într-un singur fișier [`personas.json`](./personas.json), ca listă de obiecte:
 
-```
-temperature: 0.90
-system prompt: <descrierea personajului / cum trebuie să joace rolul>
+```json
+{
+  "name": "Nea Fănică",
+  "personality": "haios, jovial, vorbește în metafore",
+  "bio": "Cântăreț de muzică populară",
+  "system_prompt": "Joci rolul unui cântăreț de muzică populară. Ești haios, jovial și vorbești în metafore.",
+  "temperature": 0.9
+}
 ```
 
 Personas definite momentan în acest repo:
 
-| Fișier | Personaj |
+| Nume | Personaj |
 |---|---|
-| `personaj1.md` | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
-| `personaj2.md` | Mircea Eliade |
-| `personaj3.md` | Un "smecheraș" care vrea să facă și el un ban |
+| Nea Fănică | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
+| Mircea Eliade | Istoric al religiilor, filozof și scriitor |
+| Robi | Un "smecheraș" care vrea să facă și el un ban |
 
-> Notă: `personaj1 copy.md` e un fișier placeholder (lorem ipsum), momentan neterminat.
+Toate personas folosesc același model Ollama (`gemma3:270m`), apelat cu system prompt-ul propriu — vezi [`ollama_client.py`](./ollama_client.py).
 
 ## Stack
 
-Python (FastAPI) + Ollama + frontend web minimal. Detalii complete în [SPEC.md](./SPEC.md).
+Python (FastAPI) + Ollama (model: `gemma3:270m`) + frontend web minimal. Detalii complete în [SPEC.md](./SPEC.md) și planul de implementare pe faze în [PLAN.md](./PLAN.md).
