@@ -2,7 +2,7 @@ from config import get_delay_range_seconds
 
 
 def test_default_delay_range_is_short_for_dev():
-    assert get_delay_range_seconds() == (2.0, 8.0)
+    assert get_delay_range_seconds() == (0.5, 1.5)
 
 
 def test_delay_range_reads_env_vars(monkeypatch):
