@@ -16,7 +16,7 @@ Toate personas sunt definite într-un singur fișier [`personas.json`](./persona
   "personality": "haios, jovial, vorbește în metafore",
   "bio": "Cântăreț de muzică populară",
   "system_prompt": "Joci rolul unui cântăreț de muzică populară. Ești haios, jovial și vorbești în metafore.",
-  "temperature": 0.9
+  "temperature": 0.7
 }
 ```
 
@@ -33,3 +33,38 @@ Toate personas folosesc același model Ollama (`gemma3:270m`), apelat cu system 
 ## Stack
 
 Python (FastAPI) + Ollama (model: `gemma3:270m`) + frontend web minimal. Detalii complete în [SPEC.md](./SPEC.md) și planul de implementare pe faze în [PLAN.md](./PLAN.md).
+
+## Cum rulezi
+
+1. **Ollama** trebuie să ruleze local, cu modelul deja descărcat:
+   ```bash
+   ollama pull gemma3:270m
+   ```
+2. **Dependențe Python** (necesită Python 3.9+):
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. **Teste** (suita pytest, scrisă TDD — vezi [PLAN.md](./PLAN.md)):
+   ```bash
+   pytest
+   ```
+4. **Chat în terminal** (CLI):
+   ```bash
+   python3 main.py
+   ```
+5. **Chat în browser** (backend FastAPI + frontend static):
+   ```bash
+   uvicorn app:app --reload --port 8000
+   ```
+   Deschide [http://localhost:8000](http://localhost:8000).
+
+### Mod demo vs. dezvoltare
+
+Implicit, delay-ul simulat între răspunsurile personas e scurt (2-8 secunde), ca să nu aștepți minute la fiecare test. Pentru demo-ul "adevărat" (2-8 minute între răspunsuri, conform [SPEC.md](./SPEC.md)):
+
+```bash
+cp .env.example .env
+# apoi decomentează RESPONSE_DELAY_MIN_S / RESPONSE_DELAY_MAX_S în .env
+```

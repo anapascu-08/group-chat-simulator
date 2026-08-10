@@ -1,15 +1,38 @@
 """Orchestrare multi-persona: fiecare persona răspunde pe rând, cu context complet."""
 
+import re
+
 from conversation import Conversation
 from ollama_client import generate_response as _default_generate_response
 
 BEHAVIOR_GUIDELINES = (
     "Rămâi tot timpul în rolul descris mai sus. Răspunde scurt (1-3 propoziții), "
     "direct la subiectul ultimului mesaj din conversație. Nu te prezenta din nou "
-    "dacă ai mai vorbit deja în conversație."
+    "dacă ai mai vorbit deja în conversație. Scrie ca într-un mesaj normal de chat, "
+    "text simplu — fără markdown (fără **, #, liste cu -)."
 )
 
 FALLBACK_REPLY = "..."
+
+_BOLD_RE = re.compile(r"\*\*(.+?)\*\*|__(.+?)__")
+_INLINE_CODE_RE = re.compile(r"`([^`]+)`")
+_HEADER_RE = re.compile(r"^#{1,6}\s*", flags=re.MULTILINE)
+_BULLET_RE = re.compile(r"^[*\-]\s+", flags=re.MULTILINE)
+
+
+def humanize(text: str) -> str:
+    """Curăță formatarea markdown pe care modelele o mai strecoară în răspuns,
+    ca mesajul să sune ca într-un chat normal, nu ca o notiță scrisă."""
+    text = _BOLD_RE.sub(lambda m: m.group(1) or m.group(2), text)
+    text = _INLINE_CODE_RE.sub(r"\1", text)
+    text = _HEADER_RE.sub("", text)
+    text = _BULLET_RE.sub("", text)
+    return text.strip()
+
+
+def _generate_and_humanize(generate_response, system_prompt, messages, temperature) -> str:
+    raw = generate_response(system_prompt=system_prompt, messages=messages, temperature=temperature)
+    return humanize(raw)
 
 
 def respond_as(
@@ -26,16 +49,12 @@ def respond_as(
     system_prompt = f"{persona['system_prompt']}\n\n{BEHAVIOR_GUIDELINES}"
     messages = conversation.messages_for(persona["name"])
 
-    reply = generate_response(
-        system_prompt=system_prompt, messages=messages, temperature=persona["temperature"]
-    )
-    if not reply.strip():
+    reply = _generate_and_humanize(generate_response, system_prompt, messages, persona["temperature"])
+    if not reply:
         # modelele mici generează ocazional un răspuns gol; o reîncercare rezolvă
         # de obicei, fiindcă generarea e non-deterministă (temperature > 0)
-        reply = generate_response(
-            system_prompt=system_prompt, messages=messages, temperature=persona["temperature"]
-        )
-    if not reply.strip():
+        reply = _generate_and_humanize(generate_response, system_prompt, messages, persona["temperature"])
+    if not reply:
         reply = FALLBACK_REPLY
 
     conversation.add_message(persona["name"], reply)

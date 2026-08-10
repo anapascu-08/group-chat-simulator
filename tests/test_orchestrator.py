@@ -1,5 +1,5 @@
 from conversation import Conversation
-from orchestrator import FALLBACK_REPLY, respond_as
+from orchestrator import FALLBACK_REPLY, humanize, respond_as
 
 
 def test_respond_as_adds_reply_to_conversation():
@@ -78,3 +78,30 @@ def test_respond_as_falls_back_when_still_empty_after_retry():
 
     assert reply == FALLBACK_REPLY
     assert conv.get_history()[-1]["content"] == FALLBACK_REPLY
+
+
+def test_humanize_strips_bold_markers():
+    assert humanize("Salut **prietene**, ce faci?") == "Salut prietene, ce faci?"
+
+
+def test_humanize_strips_headers():
+    assert humanize("# Salut\nCe faci?") == "Salut\nCe faci?"
+
+
+def test_humanize_strips_bullet_markers():
+    assert humanize("- primul\n- al doilea") == "primul\nal doilea"
+
+
+def test_humanize_strips_backticks():
+    assert humanize("Ascultă `muzica` asta") == "Ascultă muzica asta"
+
+
+def test_respond_as_humanizes_reply_before_storing():
+    conv = Conversation()
+    conv.add_message("Tu", "Salut!")
+    persona = {"name": "A", "system_prompt": "sp", "temperature": 0.5}
+
+    reply = respond_as(conv, persona, generate_response=lambda **kwargs: "**Salut** prietene!")
+
+    assert reply == "Salut prietene!"
+    assert conv.get_history()[-1]["content"] == "Salut prietene!"
