@@ -45,6 +45,30 @@ def test_chat_triggers_replies_from_all_personas_in_order():
     assert names == ["Tu", "A", "B"]
 
 
+def test_chat_uses_provided_name():
+    client = make_client()
+    client.post("/chat", json={"message": "Salut!", "name": "Ana"})
+
+    messages = client.get("/messages").json()
+    assert messages[0] == {"name": "Ana", "content": "Salut!"}
+
+
+def test_chat_falls_back_to_default_name_when_missing():
+    client = make_client()
+    client.post("/chat", json={"message": "Salut!"})
+
+    messages = client.get("/messages").json()
+    assert messages[0]["name"] == "Tu"
+
+
+def test_chat_falls_back_to_default_name_when_blank():
+    client = make_client()
+    client.post("/chat", json={"message": "Salut!", "name": "   "})
+
+    messages = client.get("/messages").json()
+    assert messages[0]["name"] == "Tu"
+
+
 def test_reset_clears_history():
     client = make_client()
     client.post("/chat", json={"message": "Salut!"})

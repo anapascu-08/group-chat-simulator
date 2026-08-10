@@ -2,9 +2,11 @@
 
 import random
 import time
+from pathlib import Path
 from typing import Callable, Optional
 
 from fastapi import BackgroundTasks, FastAPI
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import HUMAN_NAME, get_delay_range_seconds
@@ -14,8 +16,12 @@ from orchestrator import respond_as
 from personas_store import load_personas
 
 
+STATIC_DIR = Path(__file__).parent / "static"
+
+
 class ChatRequest(BaseModel):
     message: str
+    name: Optional[str] = None
 
 
 def create_app(
@@ -39,7 +45,8 @@ def create_app(
 
     @app.post("/chat")
     def post_chat(payload: ChatRequest, background_tasks: BackgroundTasks):
-        conversation.add_message(HUMAN_NAME, payload.message)
+        sender = payload.name.strip() if payload.name and payload.name.strip() else HUMAN_NAME
+        conversation.add_message(sender, payload.message)
         state["round_id"] += 1
         background_tasks.add_task(generate_round, state["round_id"])
         return {"status": "ok"}
@@ -53,6 +60,8 @@ def create_app(
         conversation.reset()
         state["round_id"] += 1
         return {"status": "ok"}
+
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
     return app
 
