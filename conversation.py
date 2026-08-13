@@ -2,8 +2,8 @@
 
 
 class Conversation:
-    def __init__(self):
-        self._history = []
+    def __init__(self, history: list = None):
+        self._history = list(history) if history else []
 
     def add_message(self, name: str, content: str) -> None:
         self._history.append({"name": name, "content": content})

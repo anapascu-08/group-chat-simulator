@@ -34,13 +34,13 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 - **La finalul acestei faze**: `python main.py` → scrii un mesaj → primești un răspuns real, generat de LLM, cu personalitatea persoanei respective. End-to-end funcțional, gata de demo minimal.
 
 ### Faza 3 — Multi-persona, delay simulat, context complet, reset
-- `tests/test_conversation.py` extins cu teste pentru orchestrarea multi-persona (toate personas răspund pe rând, fiecare vede răspunsurile anterioare din rundă) și pentru `/reset` — cu `ollama_client.generate_response` mockuit — apoi implementarea în `conversation.py`/`main.py`.
+- `tests/test_orchestrator.py` (nu `test_conversation.py` — acela testează doar clasa `Conversation` de bază) cu teste pentru orchestrarea multi-persona (toate personas răspund pe rând, fiecare vede răspunsurile anterioare din rundă) și pentru reset — cu `ollama_client.generate_response` mockuit — apoi implementarea în `orchestrator.py`/`main.py`.
 - Delay simulat între răspunsuri, controlat printr-un env var (ex. `RESPONSE_DELAY_MIN_S` / `RESPONSE_DELAY_MAX_S`), cu default mic pentru dev. (Testat doar că parametrii sunt citiți corect, nu că timpul efectiv trece.)
 - Comandă `/reset` în CLI care golește istoricul conversației.
 
 ### Faza 4 — Backend FastAPI peste aceeași logică
 - Extrage logica de business (istoric, orchestrare personas, apel Ollama) în module reutilizabile, independente de CLI — deja separate din Fazele 2-3 dacă structura e păstrată curată.
-- `tests/test_app.py` întâi, cu `fastapi.testclient.TestClient` și `generate_response` mockuit: teste pentru `POST /chat`, `GET /messages`, `POST /reset` — apoi `app.py` (FastAPI) ca să treacă testele.
+- `tests/test_app.py` întâi, cu `fastapi.testclient.TestClient` și `generate_response` mockuit: teste pentru `POST /chat`, `GET /messages`, `POST /reset` — apoi `app.py` (FastAPI) ca să treacă testele. (Aceste rute au fost înlocuite ulterior de rutele per-conversație din Faza 8 — `/conversations/{id}/...` — vezi mai jos.)
 - Verificare manuală suplimentară: `curl`/httpie către endpointurile FastAPI confirmă același comportament ca CLI-ul, dar prin HTTP.
 
 ### Faza 5 — Frontend web minimal
@@ -61,17 +61,29 @@ Orchestrarea din Fazele 3-6 e explicit provizorie: round-robin, toate personas r
 - De văzut dacă routing-ul e un apel LLM separat (cost/latență suplimentară) sau o euristică simplă (scor de relevanță pe cuvinte-cheie din bio/personality).
 - Rămâne compatibil cu mențiunile explicite `@nume` din Faza curentă — o mențiune explicită ar trebui să aibă mereu prioritate față de orice euristică de relevanță.
 
+### Faza 8 — Persistență conversații (JSON per conversație) — IMPLEMENTAT
+Istoricul trăia doar în memorie (`Conversation`) — un restart de server sau proces CLI îl pierdea definitiv. Acum fiecare conversație e persistată într-un fișier JSON propriu, în directorul `conversations/` (ignorat în git), numit după un id (uuid4 hex), cu `created_at` separat pentru sortare.
+- `conversation_store.py` — `ConversationStore`: `create`/`list_conversations`/`load_messages`/`append_message`/`reset`/`exists`, testat TDD în `tests/test_conversation_store.py` (director temporar `tmp_path`).
+- `app.py` expune multi-conversație: `GET /conversations` (listă, cu titlu derivat din primul mesaj + `message_count`), `POST /conversations` (creează una nouă), `GET/POST /conversations/{id}/messages|chat|reset`. La pornire, dacă nu există nicio conversație pe disc, se creează una implicit.
+- Frontend (`static/index.html`): dropdown cu toate conversațiile + buton „+ Nouă"; id-ul conversației active e ținut în `localStorage` (`gcs_conversation_id`), ca la refresh să rămâi pe aceeași conversație.
+- Rămâne un singur grup chat activ per conversație (CLI-ul din `main.py` nu a fost conectat la persistență — rămâne efemer, în memorie, neschimbat).
+
 ## Fișiere critice
 
 - `personas.json` — sursa unică de adevăr pentru personas (nou)
+- `personas_store.py` — încarcă/parsează `personas.json` (nou)
+- `config.py` — citește configurare din environment (`.env`): model, delay, nume user (nou)
 - `ollama_client.py` — singurul loc care vorbește cu Ollama (nou)
 - `conversation.py` — istoric conversație în memorie (nou)
+- `mentions.py` / `routing.py` / `responders.py` — decid cine răspunde: mențiuni explicite `@nume`, cu prioritate, altfel euristică de relevanță (Faza 7, nou)
 - `main.py` — CLI, felia verticală din Faza 2 (nou)
 - `app.py` — FastAPI, Faza 4 (nou)
 - `static/index.html` (sau echivalent) — frontend Faza 5 (nou)
 - `README.md`, `SPEC.md` — de actualizat la Faza 1 (README) și Faza 6 (README)
 - `Modelfile.personaj1-3`, `personaj1-3.md` — de șters/commituit definitiv la Faza 1
 - `tests/` — suita pytest, crescută TDD din Faza 2 încolo (nou)
+- `conversation_store.py` — persistență JSON per conversație, Faza 8 (nou)
+- `conversations/` — director cu câte un fișier JSON per conversație, Faza 8 (nou, de adăugat în `.gitignore`)
 
 ## Verificare
 

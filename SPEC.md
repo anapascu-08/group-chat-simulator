@@ -27,9 +27,10 @@ Demo simplu, rulabil local, care arată cum poți orchestra mai multe "personas"
 - Autentificare/useri reali
 - Persistență în DB
 - Voice/multimedia
-- Multi-grup / multi-server (doar un singur grup chat activ)
+- Multi-server / conturi reale (o singură instanță locală, fără autentificare). Mai multe conversații separate, comutabile din UI, sunt permise — vezi Faza 8 din PLAN.md.
 
 ## Model de date (minim)
+Ilustrativ — schema completă chiar folosită în `personas.json` (cu `system_prompt`, `temperature`, `emoji`) e documentată în README.md.
 ```json
 {
   "name": "Ana",

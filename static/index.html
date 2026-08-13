@@ -29,6 +29,21 @@
     font-size: 0.9rem;
     width: 140px;
   }
+  #conversation-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  #conversation-select {
+    flex: 1;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.85rem;
+    background: white;
+  }
   #messages {
     display: flex;
     flex-direction: column;
@@ -75,6 +90,10 @@
 </head>
 <body>
   <h1>Group Chat Simulator</h1>
+  <div id="conversation-bar">
+    <select id="conversation-select"></select>
+    <button type="button" id="new-conversation-button" class="secondary">+ Nouă</button>
+  </div>
   <div id="username-bar">
     <label for="username-input">Numele tău:</label>
     <input type="text" id="username-input" placeholder="Tu" autocomplete="off" />
@@ -94,11 +113,33 @@
   const resetButton = document.getElementById("reset-button");
   const statusEl = document.getElementById("status");
   const usernameInput = document.getElementById("username-input");
+  const conversationSelect = document.getElementById("conversation-select");
+  const newConversationButton = document.getElementById("new-conversation-button");
 
   const HUMAN_NAME = "Tu";
   const USERNAME_KEY = "gcs_username";
+  const CONVERSATION_KEY = "gcs_conversation_id";
+  let currentConversationId = localStorage.getItem(CONVERSATION_KEY) || null;
   const nameColors = new Map();
   const palette = ["#e11d48", "#059669", "#7c3aed", "#d97706", "#0891b2", "#be123c", "#4338ca"];
+  const personaEmojis = new Map();
+
+  async function loadPersonas() {
+    try {
+      const response = await fetch("/personas");
+      const personas = await response.json();
+      for (const p of personas) {
+        if (p.emoji) personaEmojis.set(p.name, p.emoji);
+      }
+    } catch (err) {
+      // fără emoji dacă /personas nu răspunde — restul UI-ului funcționează oricum
+    }
+  }
+
+  function labelFor(name) {
+    const emoji = personaEmojis.get(name);
+    return emoji ? `${emoji} ${name}` : name;
+  }
 
   usernameInput.value = localStorage.getItem(USERNAME_KEY) || "";
   usernameInput.addEventListener("change", () => {
@@ -125,7 +166,7 @@
 
       const nameEl = document.createElement("div");
       nameEl.className = "name";
-      nameEl.textContent = msg.name;
+      nameEl.textContent = labelFor(msg.name);
       nameEl.style.color = msg.name === me ? "#1d4ed8" : colorFor(msg.name);
 
       const contentEl = document.createElement("div");
@@ -139,9 +180,41 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function formatConversationLabel(conv) {
+    const date = new Date(conv.created_at);
+    const when = isNaN(date)
+      ? ""
+      : date.toLocaleString("ro-RO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return when ? `${conv.title} (${when})` : conv.title;
+  }
+
+  async function loadConversations() {
+    const response = await fetch("/conversations");
+    const conversations = await response.json();
+
+    const knownIds = new Set(conversations.map((c) => c.id));
+    if (!currentConversationId || !knownIds.has(currentConversationId)) {
+      currentConversationId = conversations[0] ? conversations[0].id : null;
+    }
+
+    conversationSelect.innerHTML = "";
+    for (const conv of conversations) {
+      const option = document.createElement("option");
+      option.value = conv.id;
+      option.textContent = formatConversationLabel(conv);
+      if (conv.id === currentConversationId) option.selected = true;
+      conversationSelect.appendChild(option);
+    }
+
+    if (currentConversationId) {
+      localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+    }
+  }
+
   async function fetchMessages() {
+    if (!currentConversationId) return;
     try {
-      const response = await fetch("/messages");
+      const response = await fetch(`/conversations/${currentConversationId}/messages`);
       render(await response.json());
       statusEl.textContent = "";
     } catch (err) {
@@ -149,27 +222,51 @@
     }
   }
 
+  conversationSelect.addEventListener("change", () => {
+    currentConversationId = conversationSelect.value;
+    localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+    fetchMessages();
+  });
+
+  newConversationButton.addEventListener("click", async () => {
+    const response = await fetch("/conversations", { method: "POST" });
+    const conversation = await response.json();
+    currentConversationId = conversation.id;
+    localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+    await loadConversations();
+    fetchMessages();
+  });
+
   formEl.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = inputEl.value.trim();
-    if (!message) return;
+    if (!message || !currentConversationId) return;
     inputEl.value = "";
     statusEl.textContent = "Personas scriu...";
-    await fetch("/chat", {
+    await fetch(`/conversations/${currentConversationId}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, name: usernameInput.value.trim() }),
     });
+    await loadConversations();
     fetchMessages();
   });
 
   resetButton.addEventListener("click", async () => {
-    await fetch("/reset", { method: "POST" });
+    if (!currentConversationId) return;
+    await fetch(`/conversations/${currentConversationId}/reset`, { method: "POST" });
+    await loadConversations();
     fetchMessages();
   });
 
-  fetchMessages();
-  setInterval(fetchMessages, 1500);
+  async function init() {
+    await loadPersonas();
+    await loadConversations();
+    fetchMessages();
+    setInterval(fetchMessages, 1500);
+  }
+
+  init();
 </script>
 </body>
 </html>

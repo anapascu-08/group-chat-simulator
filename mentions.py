@@ -16,6 +16,11 @@ def _name_tokens(name: str) -> set[str]:
     return tokens
 
 
+def has_mention(text: str) -> bool:
+    """Dacă mesajul conține cel puțin o mențiune @nume."""
+    return bool(_MENTION_RE.search(text))
+
+
 def mentioned_personas(text: str, personas: list[dict]) -> list[dict]:
     """Personas menționate explicit în text cu @nume.
 

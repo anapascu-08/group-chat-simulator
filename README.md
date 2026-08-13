@@ -16,7 +16,8 @@ Toate personas sunt definite într-un singur fișier [`personas.json`](./persona
   "personality": "haios, jovial, vorbește în metafore",
   "bio": "Cântăreț de muzică populară",
   "system_prompt": "Joci rolul unui cântăreț de muzică populară. Ești haios, jovial și vorbești în metafore.",
-  "temperature": 0.7
+  "temperature": 0.7,
+  "emoji": "🪗"
 }
 ```
 
@@ -60,9 +61,11 @@ Python (FastAPI) + Ollama (model: `gemma3:270m`) + frontend web minimal. Detalii
    ```
    Deschide [http://localhost:8000](http://localhost:8000).
 
+   Fiecare conversație e persistată separat (câte un fișier JSON în `conversations/`, ignorat în git). Din UI poți schimba conversația activă din dropdown-ul de sus sau porni una nouă cu „+ Nouă" — vezi Faza 8 din [PLAN.md](./PLAN.md) pentru detalii.
+
 ### Mod demo vs. dezvoltare
 
-Implicit, delay-ul simulat între răspunsurile personas e scurt (2-8 secunde), ca să nu aștepți minute la fiecare test. Pentru demo-ul "adevărat" (2-8 minute între răspunsuri, conform [SPEC.md](./SPEC.md)):
+Implicit, delay-ul simulat între răspunsurile personas e foarte scurt (0.5-1.5 secunde), ca să nu aștepți la fiecare test. Pentru demo-ul "adevărat" (2-8 minute între răspunsuri, conform [SPEC.md](./SPEC.md)):
 
 ```bash
 cp .env.example .env

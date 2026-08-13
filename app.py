@@ -3,21 +3,23 @@
 import random
 import time
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import HUMAN_NAME, get_delay_range_seconds
 from conversation import Conversation
-from mentions import mentioned_personas
+from conversation_store import ConversationNotFound, ConversationStore
 from ollama_client import generate_response as _default_generate_response
 from orchestrator import respond_as
 from personas_store import load_personas
+from responders import select_responders
 
 
 STATIC_DIR = Path(__file__).parent / "static"
+CONVERSATIONS_DIR = Path(__file__).parent / "conversations"
 
 
 class ChatRequest(BaseModel):
@@ -29,39 +31,79 @@ def create_app(
     personas: Optional[list] = None,
     generate_response: Callable = _default_generate_response,
     delay_range: Callable = get_delay_range_seconds,
+    conversations_dir: Union[str, Path] = CONVERSATIONS_DIR,
 ) -> FastAPI:
     app = FastAPI(title="Group Chat Simulator")
-    conversation = Conversation()
+    store = ConversationStore(conversations_dir)
+    conversations: dict[str, Conversation] = {}
     state = {
         "personas": personas if personas is not None else load_personas(),
-        "round_id": 0,
+        "round_ids": {},
     }
 
-    def generate_round(round_id: int, personas: list[dict]) -> None:
+    if not store.list_conversations():
+        store.create()
+
+    def get_conversation(conversation_id: str) -> Conversation:
+        if conversation_id not in conversations:
+            try:
+                history = store.load_messages(conversation_id)
+            except ConversationNotFound:
+                raise HTTPException(status_code=404, detail="Conversație inexistentă")
+            conversations[conversation_id] = Conversation(history)
+        return conversations[conversation_id]
+
+    def generate_round(conversation_id: str, round_id: int, personas: list, target_message: dict) -> None:
+        conversation = conversations[conversation_id]
         for persona in personas:
             time.sleep(random.uniform(*delay_range()))
-            if round_id != state["round_id"]:
-                return  # a venit un /reset între timp, runda asta nu mai e validă
-            respond_as(conversation, persona, generate_response=generate_response)
+            if round_id != state["round_ids"].get(conversation_id):
+                return  # a venit un mesaj nou/reset între timp, runda asta nu mai e validă
+            reply = respond_as(conversation, persona, target_message=target_message, generate_response=generate_response)
+            store.append_message(conversation_id, persona["name"], reply)
 
-    @app.post("/chat")
-    def post_chat(payload: ChatRequest, background_tasks: BackgroundTasks):
+    @app.get("/conversations")
+    def list_conversations():
+        return store.list_conversations()
+
+    @app.post("/conversations")
+    def create_conversation():
+        data = store.create()
+        conversations[data["id"]] = Conversation()
+        return data
+
+    @app.get("/conversations/{conversation_id}/messages")
+    def get_messages(conversation_id: str):
+        return get_conversation(conversation_id).get_history()
+
+    @app.post("/conversations/{conversation_id}/chat")
+    def post_chat(conversation_id: str, payload: ChatRequest, background_tasks: BackgroundTasks):
+        conversation = get_conversation(conversation_id)
         sender = payload.name.strip() if payload.name and payload.name.strip() else HUMAN_NAME
         conversation.add_message(sender, payload.message)
-        state["round_id"] += 1
-        targets = mentioned_personas(payload.message, state["personas"])
-        background_tasks.add_task(generate_round, state["round_id"], targets)
+        store.append_message(conversation_id, sender, payload.message)
+
+        round_id = state["round_ids"].get(conversation_id, 0) + 1
+        state["round_ids"][conversation_id] = round_id
+        targets = select_responders(payload.message, state["personas"])
+        target_message = {"name": sender, "content": payload.message}
+        background_tasks.add_task(generate_round, conversation_id, round_id, targets, target_message)
         return {"status": "ok"}
 
-    @app.get("/messages")
-    def get_messages():
-        return conversation.get_history()
-
-    @app.post("/reset")
-    def post_reset():
+    @app.post("/conversations/{conversation_id}/reset")
+    def post_reset(conversation_id: str):
+        conversation = get_conversation(conversation_id)
         conversation.reset()
-        state["round_id"] += 1
+        store.reset(conversation_id)
+        state["round_ids"][conversation_id] = state["round_ids"].get(conversation_id, 0) + 1
         return {"status": "ok"}
+
+    @app.get("/personas")
+    def get_personas():
+        return [
+            {"name": p["name"], "emoji": p.get("emoji", ""), "color": p.get("color", "")}
+            for p in state["personas"]
+        ]
 
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 

@@ -25,12 +25,36 @@ def test_respond_as_passes_persona_system_prompt_and_temperature():
         captured["temperature"] = temperature
         return "ok"
 
-    respond_as(conv, persona, generate_response=fake_generate)
+    target_message = {"name": "Tu", "content": "Salut!"}
+    respond_as(conv, persona, target_message=target_message, generate_response=fake_generate)
 
     assert captured["system_prompt"].startswith("sp-fanica")
     assert "subiect" in captured["system_prompt"].lower()
     assert captured["temperature"] == 0.5
     assert captured["messages"] == [{"role": "user", "content": "Tu: Salut!"}]
+
+
+def test_target_message_stays_anchored_across_round():
+    """Regresie: a doua persona din rundă trebuie să răspundă tot la
+    întrebarea inițială a utilizatorului, nu la replica primei persona."""
+    conv = Conversation()
+    conv.add_message("Tu", "Ce mai faceți?")
+    target_message = {"name": "Tu", "content": "Ce mai faceți?"}
+
+    persona_a = {"name": "A", "system_prompt": "sp-a", "temperature": 0.5}
+    persona_b = {"name": "B", "system_prompt": "sp-b", "temperature": 0.5}
+
+    respond_as(conv, persona_a, target_message=target_message, generate_response=lambda **kwargs: "Bine, mersi!")
+
+    captured = {}
+
+    def fake_generate_b(system_prompt, messages, temperature):
+        captured["messages"] = messages
+        return "Și eu bine!"
+
+    respond_as(conv, persona_b, target_message=target_message, generate_response=fake_generate_b)
+
+    assert captured["messages"][-1] == {"role": "user", "content": "Tu: Ce mai faceți?"}
 
 
 def test_later_persona_sees_earlier_persona_reply_same_round():
