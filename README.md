@@ -29,17 +29,17 @@ Personas definite momentan în acest repo:
 | Mircea Eliade | Istoric al religiilor, filozof și scriitor |
 | Robi | Un "smecheraș" care vrea să facă și el un ban |
 
-Toate personas folosesc același model Ollama (`gemma3:270m`), apelat cu system prompt-ul propriu — vezi [`ollama_client.py`](./ollama_client.py).
+Toate personas folosesc același model Ollama (`gemma4:e2b`), apelat cu system prompt-ul propriu — vezi [`ollama_client.py`](./ollama_client.py).
 
 ## Stack
 
-Python (FastAPI) + Ollama (model: `gemma3:270m`) + frontend web minimal. Detalii complete în [SPEC.md](./SPEC.md) și planul de implementare pe faze în [PLAN.md](./PLAN.md).
+Python (FastAPI) + Ollama (model: `gemma4:e2b`) + frontend web minimal. Detalii complete în [SPEC.md](./SPEC.md) și planul de implementare pe faze în [PLAN.md](./PLAN.md).
 
 ## Cum rulezi
 
 1. **Ollama** trebuie să ruleze local, cu modelul deja descărcat:
    ```bash
-   ollama pull gemma3:270m
+   ollama pull gemma4:e2b
    ```
 2. **Dependențe Python** (necesită Python 3.9+):
    ```bash

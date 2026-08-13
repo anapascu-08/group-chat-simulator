@@ -49,12 +49,13 @@ def test_target_message_stays_anchored_across_round():
     captured = {}
 
     def fake_generate_b(system_prompt, messages, temperature):
-        captured["messages"] = messages
+        captured["system_prompt"] = system_prompt
         return "Și eu bine!"
 
     respond_as(conv, persona_b, target_message=target_message, generate_response=fake_generate_b)
 
-    assert captured["messages"][-1] == {"role": "user", "content": "Tu: Ce mai faceți?"}
+    assert "Ce mai faceți?" in captured["system_prompt"]
+    assert "Bine, mersi!" not in captured["system_prompt"]
 
 
 def test_later_persona_sees_earlier_persona_reply_same_round():

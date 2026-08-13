@@ -5,7 +5,7 @@
 Proiectul e la stadiul de spec + fișiere de configurare pentru personas, fără cod de aplicație. Scopul e o aplicație care simulează un grup de chat cu 3-4 personas AI (Ollama local), fiecare cu personalitate proprie, care răspund la mesajele userului cu context păstrat între mesaje. Detalii complete în [SPEC.md](./SPEC.md).
 
 Decizii de arhitectură:
-- **Config personas**: un singur model Ollama (`gemma3:270m`), apelat cu system prompt diferit per persona, citit dintr-un `personas.json` (conform modelului din SPEC.md). Renunțăm definitiv la Modelfile-uri per persona.
+- **Config personas**: un singur model Ollama (`gemma4:e2b`), apelat cu system prompt diferit per persona, citit dintr-un `personas.json` (conform modelului din SPEC.md). Renunțăm definitiv la Modelfile-uri per persona.
 - **Interfață MVP**: terminal (CLI) întâi — felia verticală e un chat loop funcțional în terminal, care lovește Ollama real. Web UI vine peste același backend, într-o fază ulterioară.
 - **Delay simulat**: configurabil printr-un env var, cu valori mici (secunde) în dev și 2-8 minute în demo/producție.
 
@@ -16,7 +16,7 @@ Fazele sunt gândite ca să avem, imediat după Faza 2, o felie verticală compl
 Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu → verde → refactor): întâi testul în `tests/test_*.py`, apoi implementarea minimă care îl trece.
 
 - **Testabil cu TDD**: `conversation.py` (istoric, reset), orchestrarea multi-persona din Faza 3, parsing/validare `personas.json`, endpointurile FastAPI din Faza 4 (cu `TestClient`). Apelurile către Ollama (`ollama_client.generate_response`) sunt mockuite în aceste teste, ca să ruleze rapid și fără dependență de un model local pornit.
-- **Nu e testabil unitar** (rămâne verificare manuală/smoke, ca în secțiunea Verificare de mai jos): răspunsul efectiv generat de `gemma3:270m` — e non-determinist, deci nu are sens un assert pe conținut; doar confirmăm că apelul reușește și întoarce text.
+- **Nu e testabil unitar** (rămâne verificare manuală/smoke, ca în secțiunea Verificare de mai jos): răspunsul efectiv generat de `gemma4:e2b` — e non-determinist, deci nu are sens un assert pe conținut; doar confirmăm că apelul reușește și întoarce text.
 - Framework: `pytest`, rulat cu `pytest` din rădăcina proiectului. Testele stau în `tests/`, oglindind modulele (`tests/test_conversation.py`, `tests/test_app.py` etc.).
 
 ## Fazele
@@ -25,7 +25,7 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 - Curăță repo: commit pentru ștergerea `Modelfile.personaj1-3` și `personaj1-3.md`; elimină mențiunile aferente din README.md.
 - `personas.json` la rădăcină, cu 3 personas (nume, personality, bio) — traduce cele 3 personaje existente (cântăreț de muzică populară, Mircea Eliade, "smecheraș") în noul format.
 - `requirements.txt` (fastapi, uvicorn, httpx sau `ollama` python client, python-dotenv opțional).
-- `ollama_client.py`: funcție `generate_response(system_prompt, temperature, history) -> str` care apelează Ollama local (`http://localhost:11434/api/chat` sau lib `ollama`) cu `gemma3:270m`.
+- `ollama_client.py`: funcție `generate_response(system_prompt, temperature, history) -> str` care apelează Ollama local (`http://localhost:11434/api/chat` sau lib `ollama`) cu `gemma4:e2b`.
 - Verificare: un script/REPL ad-hoc care apelează `generate_response` cu un system prompt hardcodat și printează răspunsul — confirmă că Ollama local + modelul răspund.
 
 ### Faza 2 — FELIE VERTICALĂ: chat loop CLI, 1 persona
@@ -50,7 +50,7 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 ### Faza 6 — Polish & demo readiness
 - Setează delay-ul implicit la 2-8 minute pentru modul demo (păstrând override rapid pentru dev).
 - Stilizare minimă (culoare/etichetă per persona) în frontend.
-- Actualizează README.md cu instrucțiuni de rulare (Ollama trebuie pornit + modelul `gemma3:270m` pull-uit, `uvicorn app:app`, deschide pagina).
+- Actualizează README.md cu instrucțiuni de rulare (Ollama trebuie pornit + modelul `gemma4:e2b` pull-uit, `uvicorn app:app`, deschide pagina).
 - "Vibe check" end-to-end: succesul definit în SPEC.md — mesaj user + 3-4 personas răspund natural, ținând cont de conversație.
 
 ### Faza 7 — Orchestrare inteligentă (post-MVP)

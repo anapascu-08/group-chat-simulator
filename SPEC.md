@@ -11,7 +11,7 @@ Demo simplu, rulabil local, care arată cum poți orchestra mai multe "personas"
 
 ## Stack
 - Backend: Python 3 (FastAPI) — expune un endpoint de chat
-- LLM: Ollama (model local: `gemma3:270m`) pentru generarea răspunsurilor fiecărui persona
+- LLM: Ollama (model local: `gemma4:e2b`) pentru generarea răspunsurilor fiecărui persona
 - Frontend: pagină web simplă (HTML/JS minimal) care consumă endpoint-ul FastAPI și afișează chat-ul în timp real
 - Stocare conversație: în memorie / JSON local (fără DB)
 
