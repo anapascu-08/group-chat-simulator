@@ -53,6 +53,14 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 - Actualizează README.md cu instrucțiuni de rulare (Ollama trebuie pornit + modelul `gemma3:270m` pull-uit, `uvicorn app:app`, deschide pagina).
 - "Vibe check" end-to-end: succesul definit în SPEC.md — mesaj user + 3-4 personas răspund natural, ținând cont de conversație.
 
+### Faza 7 — Orchestrare inteligentă (post-MVP)
+Orchestrarea din Fazele 3-6 e explicit provizorie: round-robin, toate personas răspund pe rând la fiecare mesaj, filtrate doar de mențiuni `@nume` (vezi `mentions.py`). Nu ține cont de relevanță — într-un grup chat real, nu toată lumea reacționează la fiecare mesaj. Idei de explorat, fără decizie fermă încă:
+- Un pas de "routing" înaintea generării: un apel LLM (sau euristică) care decide *care* personas ar reacționa plauzibil la ultimul mesaj, pe baza personalității/bio-ului fiecăreia, nu doar prezența unei mențiuni.
+- Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv (evită zgomotul de "toată lumea răspunde mereu").
+- Posibilitate ca o persona să reacționeze la răspunsul altei persona din aceeași rundă (nu doar la mesajul userului), pentru dinamici de tip "ceartă"/"aliniere" între personaje.
+- De văzut dacă routing-ul e un apel LLM separat (cost/latență suplimentară) sau o euristică simplă (scor de relevanță pe cuvinte-cheie din bio/personality).
+- Rămâne compatibil cu mențiunile explicite `@nume` din Faza curentă — o mențiune explicită ar trebui să aibă mereu prioritate față de orice euristică de relevanță.
+
 ## Fișiere critice
 
 - `personas.json` — sursa unică de adevăr pentru personas (nou)

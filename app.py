@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from config import HUMAN_NAME, get_delay_range_seconds
 from conversation import Conversation
+from mentions import mentioned_personas
 from ollama_client import generate_response as _default_generate_response
 from orchestrator import respond_as
 from personas_store import load_personas
@@ -36,8 +37,8 @@ def create_app(
         "round_id": 0,
     }
 
-    def generate_round(round_id: int) -> None:
-        for persona in state["personas"]:
+    def generate_round(round_id: int, personas: list[dict]) -> None:
+        for persona in personas:
             time.sleep(random.uniform(*delay_range()))
             if round_id != state["round_id"]:
                 return  # a venit un /reset între timp, runda asta nu mai e validă
@@ -48,7 +49,8 @@ def create_app(
         sender = payload.name.strip() if payload.name and payload.name.strip() else HUMAN_NAME
         conversation.add_message(sender, payload.message)
         state["round_id"] += 1
-        background_tasks.add_task(generate_round, state["round_id"])
+        targets = mentioned_personas(payload.message, state["personas"])
+        background_tasks.add_task(generate_round, state["round_id"], targets)
         return {"status": "ok"}
 
     @app.get("/messages")

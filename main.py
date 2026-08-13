@@ -5,6 +5,7 @@ import time
 
 from config import HUMAN_NAME, get_delay_range_seconds
 from conversation import Conversation
+from mentions import mentioned_personas
 from orchestrator import respond_as
 from personas_store import load_personas
 
@@ -35,7 +36,7 @@ def main() -> None:
 
         conversation.add_message(HUMAN_NAME, user_message)
 
-        for persona in personas:
+        for persona in mentioned_personas(user_message, personas):
             time.sleep(random.uniform(*get_delay_range_seconds()))
             reply = respond_as(conversation, persona)
             print(f"{persona['name']}: {reply}\n")

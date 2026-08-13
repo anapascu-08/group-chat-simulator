@@ -76,3 +76,21 @@ def test_reset_clears_history():
     client.post("/reset")
 
     assert client.get("/messages").json() == []
+
+
+def test_chat_with_mention_only_that_persona_replies():
+    client = make_client()
+    client.post("/chat", json={"message": "@A salut!"})
+
+    messages = client.get("/messages").json()
+    names = [m["name"] for m in messages]
+    assert names == ["Tu", "A"]
+
+
+def test_chat_without_mention_all_personas_reply():
+    client = make_client()
+    client.post("/chat", json={"message": "Salut tuturor, fără mențiune!"})
+
+    messages = client.get("/messages").json()
+    names = [m["name"] for m in messages]
+    assert names == ["Tu", "A", "B"]
