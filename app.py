@@ -109,6 +109,19 @@ def create_app(
         state["typing"][conversation_id] = None
         return {"status": "ok"}
 
+    @app.delete("/conversations/{conversation_id}")
+    def delete_conversation(conversation_id: str):
+        try:
+            store.delete(conversation_id)
+        except ConversationNotFound:
+            raise HTTPException(status_code=404, detail="Conversație inexistentă")
+        conversations.pop(conversation_id, None)
+        state["round_ids"].pop(conversation_id, None)
+        state["typing"].pop(conversation_id, None)
+        if not store.list_conversations():
+            store.create()
+        return {"status": "ok"}
+
     @app.get("/personas")
     def get_personas():
         return [

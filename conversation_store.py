@@ -51,6 +51,12 @@ class ConversationStore:
         data["messages"] = []
         self._write(data)
 
+    def delete(self, conversation_id: str) -> None:
+        path = self._path(conversation_id)
+        if not path.exists():
+            raise ConversationNotFound(conversation_id)
+        path.unlink()
+
     def _summarize(self, data: dict) -> dict:
         return {
             "id": data["id"],

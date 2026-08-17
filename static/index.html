@@ -54,11 +54,17 @@
   #conversation-select {
     flex: 1;
     min-width: 0;
-    padding: 0.35rem 0.5rem;
+    padding: 0.35rem 1.75rem 0.35rem 0.5rem;
     border-radius: 6px;
     border: 1px solid #ccc;
     font-size: 0.85rem;
-    background: white;
+    background-color: white;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 0.85rem;
   }
   #messages {
     display: flex;
@@ -78,6 +84,7 @@
     padding: 0.5rem 0.75rem;
     border-radius: 10px;
     background: #eee;
+    border-left: 3px solid transparent;
     align-self: flex-start;
   }
   .message.human { align-self: flex-end; background: #d6e8ff; }
@@ -97,7 +104,7 @@
     0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
     30% { transform: translateY(-4px); opacity: 1; }
   }
-  form { display: flex; gap: 0.5rem; align-items: flex-end; }
+  form { display: flex; gap: 0.5rem; align-items: flex-start; }
   input[type="text"] {
     flex: 1;
     padding: 0.5rem;
@@ -147,6 +154,9 @@
     font-size: 1rem;
   }
   button.secondary { background: #999; }
+  #new-conversation-button { background: #059669; }
+  #reset-button { background: #d97706; }
+  #delete-conversation-button { background: #dc2626; }
   #status { font-size: 0.8rem; color: #666; min-height: 1.2em; margin-top: 0.35rem; }
 </style>
 </head>
@@ -156,6 +166,7 @@
   <div id="conversation-bar">
     <select id="conversation-select"></select>
     <button type="button" id="new-conversation-button" class="secondary">+ Nouă</button>
+    <button type="button" id="delete-conversation-button" class="secondary">Șterge</button>
   </div>
   <div id="username-bar">
     <label for="username-input">Numele tău:</label>
@@ -181,6 +192,7 @@
   const usernameInput = document.getElementById("username-input");
   const conversationSelect = document.getElementById("conversation-select");
   const newConversationButton = document.getElementById("new-conversation-button");
+  const deleteConversationButton = document.getElementById("delete-conversation-button");
   const mentionListEl = document.getElementById("mention-list");
 
   const HUMAN_NAME = "Tu";
@@ -315,12 +327,23 @@
     return nameColors.get(name);
   }
 
+  function isNearBottom() {
+    const threshold = 80;
+    return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= threshold;
+  }
+
   function render(messages) {
+    const shouldStickToBottom = isNearBottom();
     messagesEl.innerHTML = "";
     const me = currentUsername();
     for (const msg of messages) {
       const div = document.createElement("div");
       div.className = "message" + (msg.name === me ? " human" : "");
+      if (msg.name !== me) {
+        const color = colorFor(msg.name);
+        div.style.background = `color-mix(in srgb, ${color} 16%, white)`;
+        div.style.borderLeft = `3px solid ${color}`;
+      }
 
       const nameEl = document.createElement("div");
       nameEl.className = "name";
@@ -335,10 +358,13 @@
       div.appendChild(contentEl);
       messagesEl.appendChild(div);
     }
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (shouldStickToBottom) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
   }
 
   function renderTypingBubble() {
+    const shouldStickToBottom = isNearBottom();
     const existing = document.getElementById("typing-bubble");
     if (existing) existing.remove();
     if (!typingName) return;
@@ -346,6 +372,9 @@
     const div = document.createElement("div");
     div.id = "typing-bubble";
     div.className = "message";
+    const typingColor = colorFor(typingName);
+    div.style.background = `color-mix(in srgb, ${typingColor} 16%, white)`;
+    div.style.borderLeft = `3px solid ${typingColor}`;
 
     const nameEl = document.createElement("div");
     nameEl.className = "name";
@@ -359,7 +388,9 @@
     div.appendChild(nameEl);
     div.appendChild(dots);
     messagesEl.appendChild(div);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (shouldStickToBottom) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
   }
 
   async function fetchTyping() {
@@ -434,6 +465,18 @@
     const conversation = await response.json();
     currentConversationId = conversation.id;
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+    typingName = null;
+    await loadConversations();
+    poll();
+  });
+
+  deleteConversationButton.addEventListener("click", async () => {
+    if (!currentConversationId) return;
+    const selectedOption = conversationSelect.options[conversationSelect.selectedIndex];
+    const label = selectedOption ? selectedOption.textContent : "conversația";
+    if (!confirm(`Ștergi "${label}"? Nu se poate anula.`)) return;
+    await fetch(`/conversations/${currentConversationId}`, { method: "DELETE" });
+    currentConversationId = null;
     typingName = null;
     await loadConversations();
     poll();
