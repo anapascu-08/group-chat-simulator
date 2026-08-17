@@ -28,9 +28,9 @@ Personas definite momentan în acest repo:
 
 | Nume | Personaj |
 |---|---|
-| Cântărețul | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
+| Cântărețul Nae | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
 | Mircea Eliade | Istoric al religiilor, filozof și scriitor |
-| Șmecherașul | Un "smecheraș" care vrea să facă și el un ban |
+| Șmecherașul Robi | Un "smecheraș" care vrea să facă și el un ban |
 | Bunica Ileana | Bunică de la țară — grijulie, glumeață, mereu îngrijorată dacă ai mâncat |
 | Vecina Maria | Vecina bârfitoare — știe tot ce se-ntâmplă în bloc |
 | Gigi Taximetristul | Taximetrist filozof — morocănos la suprafață, are o părere despre orice |
