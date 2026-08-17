@@ -34,3 +34,11 @@ def test_multiple_mentions_preserve_persona_order():
 
 def test_mention_with_no_matching_persona_returns_none():
     assert mentioned_personas("@cineva salut", PERSONAS) == []
+
+
+def test_mention_ignores_diacritics():
+    assert mentioned_personas("@Fanica ce zici?", PERSONAS) == [PERSONAS[0]]
+
+
+def test_mention_by_name_prefix():
+    assert mentioned_personas("@Mir ce zici?", PERSONAS) == [PERSONAS[1]]

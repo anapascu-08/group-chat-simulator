@@ -67,13 +67,24 @@
   .message.human { align-self: flex-end; background: #d6e8ff; }
   .message .name { font-weight: 600; font-size: 0.8rem; margin-bottom: 0.15rem; }
   .message .content { white-space: pre-wrap; word-break: break-word; }
-  form { display: flex; gap: 0.5rem; }
+  form { display: flex; gap: 0.5rem; align-items: flex-end; }
   input[type="text"] {
     flex: 1;
     padding: 0.5rem;
     border-radius: 6px;
     border: 1px solid #ccc;
     font-size: 1rem;
+  }
+  #message-input {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: none;
+    max-height: 8rem;
+    line-height: 1.4;
   }
   button {
     padding: 0.5rem 1rem;
@@ -100,7 +111,7 @@
   </div>
   <div id="messages"></div>
   <form id="chat-form">
-    <input type="text" id="message-input" placeholder="Scrie un mesaj... (@nume pentru a menționa pe cineva anume)" autocomplete="off" />
+    <textarea id="message-input" placeholder="Scrie un mesaj... @nume pentru a menționa pe cineva anume" autocomplete="off" rows="1"></textarea>
     <button type="submit">Trimite</button>
     <button type="button" id="reset-button" class="secondary">Reset</button>
   </form>
@@ -237,11 +248,25 @@
     fetchMessages();
   });
 
+  function autoGrow() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = `${inputEl.scrollHeight}px`;
+  }
+  inputEl.addEventListener("input", autoGrow);
+
+  inputEl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      formEl.requestSubmit();
+    }
+  });
+
   formEl.addEventListener("submit", async (event) => {
     event.preventDefault();
     const message = inputEl.value.trim();
     if (!message || !currentConversationId) return;
     inputEl.value = "";
+    autoGrow();
     statusEl.textContent = "Personas scriu...";
     await fetch(`/conversations/${currentConversationId}/chat`, {
       method: "POST",
