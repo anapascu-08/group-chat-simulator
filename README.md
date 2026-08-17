@@ -32,7 +32,7 @@ Personas definite momentan în acest repo:
 | Mircea Eliade | Istoric al religiilor, filozof și scriitor |
 | Șmecherașul | Un "smecheraș" care vrea să facă și el un ban |
 | Bunica Ileana | Bunică de la țară — grijulie, glumeață, mereu îngrijorată dacă ai mâncat |
-| vecina Maria | Vecina bârfitoare — știe tot ce se-ntâmplă în bloc |
+| Vecina Maria | Vecina bârfitoare — știe tot ce se-ntâmplă în bloc |
 | Gigi Taximetristul | Taximetrist filozof — morocănos la suprafață, are o părere despre orice |
 | Mia Influencerița | Influenceriță pe social media — entuziastă, presară cuvinte în engleză |
 | Nelu Ardeleanul | Ardelean liniștit și tacticos — nu se grăbește niciodată |
