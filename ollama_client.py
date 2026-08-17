@@ -24,6 +24,7 @@ def generate_response(
         "messages": [{"role": "system", "content": system_prompt}, *messages],
         "stream": False,
         "options": {"temperature": temperature},
+        "think": False,
     }
     response = httpx.post(f"{OLLAMA_HOST}/api/chat", json=payload, timeout=120)
     response.raise_for_status()
