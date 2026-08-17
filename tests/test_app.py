@@ -141,6 +141,47 @@ def test_chat_without_mention_all_personas_reply(tmp_path):
     assert names == ["Tu", "A", "B"]
 
 
+def test_typing_is_none_before_any_chat(tmp_path):
+    client = make_client(tmp_path=tmp_path)
+    conversation_id = first_conversation_id(client)
+
+    assert client.get(f"/conversations/{conversation_id}/typing").json() == {"name": None}
+
+
+def test_typing_shows_persona_name_while_generating_and_clears_after(tmp_path):
+    captured = []
+
+    def fake_generate_response(system_prompt, messages, temperature):
+        captured.append(app.state.internal_state["typing"].get(conversation_id))
+        return f"raspuns pentru {system_prompt}"
+
+    app = create_app(
+        personas=PERSONAS,
+        generate_response=fake_generate_response,
+        delay_range=lambda: (0.0, 0.0),
+        conversations_dir=tmp_path,
+    )
+    client = TestClient(app)
+    conversation_id = first_conversation_id(client)
+
+    client.post(f"/conversations/{conversation_id}/chat", json={"message": "Salut tuturor!"})
+
+    # fiecare persona a fost surprinsă drept "typing" chiar înainte de generarea ei
+    assert captured == ["A", "B"]
+    # după ce runda s-a terminat, indicatorul revine la None
+    assert client.get(f"/conversations/{conversation_id}/typing").json() == {"name": None}
+
+
+def test_typing_clears_on_reset(tmp_path):
+    client = make_client(tmp_path=tmp_path)
+    conversation_id = first_conversation_id(client)
+    client.post(f"/conversations/{conversation_id}/chat", json={"message": "Salut!"})
+
+    client.post(f"/conversations/{conversation_id}/reset")
+
+    assert client.get(f"/conversations/{conversation_id}/typing").json() == {"name": None}
+
+
 def test_personas_endpoint_returns_name_and_emoji(tmp_path):
     client = make_client(tmp_path=tmp_path)
     response = client.get("/personas")

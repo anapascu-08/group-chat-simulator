@@ -40,7 +40,9 @@ def create_app(
     state = {
         "personas": personas if personas is not None else load_personas(),
         "round_ids": {},
+        "typing": {},
     }
+    app.state.internal_state = state  # hook pentru teste — inspecție directă, fără round-trip HTTP
 
     if not store.list_conversations():
         store.create()
@@ -59,8 +61,11 @@ def create_app(
         for persona in personas:
             time.sleep(random.uniform(*delay_range()))
             if round_id != state["round_ids"].get(conversation_id):
+                state["typing"][conversation_id] = None
                 return  # a venit un mesaj nou/reset între timp, runda asta nu mai e validă
+            state["typing"][conversation_id] = persona["name"]
             reply = respond_as(conversation, persona, target_message=target_message, generate_response=generate_response)
+            state["typing"][conversation_id] = None
             store.append_message(conversation_id, persona["name"], reply)
 
     @app.get("/conversations")
@@ -76,6 +81,10 @@ def create_app(
     @app.get("/conversations/{conversation_id}/messages")
     def get_messages(conversation_id: str):
         return get_conversation(conversation_id).get_history()
+
+    @app.get("/conversations/{conversation_id}/typing")
+    def get_typing(conversation_id: str):
+        return {"name": state["typing"].get(conversation_id)}
 
     @app.post("/conversations/{conversation_id}/chat")
     def post_chat(conversation_id: str, payload: ChatRequest, background_tasks: BackgroundTasks):
@@ -97,6 +106,7 @@ def create_app(
         conversation.reset()
         store.reset(conversation_id)
         state["round_ids"][conversation_id] = state["round_ids"].get(conversation_id, 0) + 1
+        state["typing"][conversation_id] = None
         return {"status": "ok"}
 
     @app.get("/personas")

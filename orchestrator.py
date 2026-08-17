@@ -11,9 +11,11 @@ BEHAVIOR_GUIDELINES = (
     "maxim 2 —, direct la subiectul ultimului mesaj din conversație. Nu te "
     "prezenta din nou dacă ai mai vorbit deja în conversație. Scrie ca într-un "
     "mesaj normal de chat, text simplu — fără markdown (fără **, #, liste cu -). "
-    "Dacă vrei să te adresezi direct altcuiva din chat — userului sau altei "
-    "persoane —, poți începe sau strecura în mesaj @Nume (ex. @Robi, @Eliade), "
-    "ca într-un chat real de grup."
+    "Dacă reacționezi la ce a zis altcineva din chat — userul sau altă persoană —, "
+    "adresează-te-i direct, undeva în mesaj, cu @Nume, folosind exact numele ei "
+    "așa cum apare în conversație (ex. @Cântărețul, @Eliade). Fă asta ori de câte "
+    "ori răspunzi cuiva anume, nu doar ocazional — ca într-un chat real de grup "
+    "unde oamenii se strigă pe nume."
 )
 
 FALLBACK_REPLY = "..."

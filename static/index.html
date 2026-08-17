@@ -29,6 +29,22 @@
     font-size: 0.9rem;
     width: 140px;
   }
+  #personas-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+  .persona-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: white;
+    border: 1px solid #ddd;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
   #conversation-bar {
     display: flex;
     align-items: center;
@@ -67,6 +83,20 @@
   .message.human { align-self: flex-end; background: #d6e8ff; }
   .message .name { font-weight: 600; font-size: 0.8rem; margin-bottom: 0.15rem; }
   .message .content { white-space: pre-wrap; word-break: break-word; }
+  .typing-dots { display: flex; gap: 0.2rem; padding: 0.15rem 0; }
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #999;
+    animation: typing-bounce 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
   form { display: flex; gap: 0.5rem; align-items: flex-end; }
   input[type="text"] {
     flex: 1;
@@ -122,6 +152,7 @@
 </head>
 <body>
   <h1>Group Chat Simulator</h1>
+  <div id="personas-bar"></div>
   <div id="conversation-bar">
     <select id="conversation-select"></select>
     <button type="button" id="new-conversation-button" class="secondary">+ Nouă</button>
@@ -160,6 +191,7 @@
   const palette = ["#e11d48", "#059669", "#7c3aed", "#d97706", "#0891b2", "#be123c", "#4338ca"];
   const personaEmojis = new Map();
   let personas = [];
+  let typingName = null;
   let mentionStart = -1;
   let mentionMatches = [];
   let mentionActiveIndex = -1;
@@ -254,6 +286,17 @@
     return emoji ? `${emoji} ${name}` : name;
   }
 
+  function renderPersonasBar() {
+    const bar = document.getElementById("personas-bar");
+    bar.innerHTML = "";
+    for (const p of personas) {
+      const chip = document.createElement("span");
+      chip.className = "persona-chip";
+      chip.textContent = labelFor(p.name);
+      bar.appendChild(chip);
+    }
+  }
+
   usernameInput.value = localStorage.getItem(USERNAME_KEY) || "";
   usernameInput.addEventListener("change", () => {
     localStorage.setItem(USERNAME_KEY, usernameInput.value.trim());
@@ -264,6 +307,8 @@
   }
 
   function colorFor(name) {
+    const persona = personas.find((p) => p.name === name);
+    if (persona && persona.color) return persona.color;
     if (!nameColors.has(name)) {
       nameColors.set(name, palette[nameColors.size % palette.length]);
     }
@@ -291,6 +336,42 @@
       messagesEl.appendChild(div);
     }
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function renderTypingBubble() {
+    const existing = document.getElementById("typing-bubble");
+    if (existing) existing.remove();
+    if (!typingName) return;
+
+    const div = document.createElement("div");
+    div.id = "typing-bubble";
+    div.className = "message";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "name";
+    nameEl.textContent = labelFor(typingName);
+    nameEl.style.color = colorFor(typingName);
+
+    const dots = document.createElement("div");
+    dots.className = "typing-dots";
+    dots.innerHTML = "<span></span><span></span><span></span>";
+
+    div.appendChild(nameEl);
+    div.appendChild(dots);
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  async function fetchTyping() {
+    if (!currentConversationId) return;
+    try {
+      const response = await fetch(`/conversations/${currentConversationId}/typing`);
+      const data = await response.json();
+      typingName = data.name;
+    } catch (err) {
+      typingName = null;
+    }
+    renderTypingBubble();
   }
 
   function formatConversationLabel(conv) {
@@ -329,16 +410,23 @@
     try {
       const response = await fetch(`/conversations/${currentConversationId}/messages`);
       render(await response.json());
+      renderTypingBubble();
       statusEl.textContent = "";
     } catch (err) {
       statusEl.textContent = "Nu pot ajunge la server...";
     }
   }
 
+  async function poll() {
+    await fetchMessages();
+    await fetchTyping();
+  }
+
   conversationSelect.addEventListener("change", () => {
     currentConversationId = conversationSelect.value;
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
-    fetchMessages();
+    typingName = null;
+    poll();
   });
 
   newConversationButton.addEventListener("click", async () => {
@@ -346,8 +434,9 @@
     const conversation = await response.json();
     currentConversationId = conversation.id;
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+    typingName = null;
     await loadConversations();
-    fetchMessages();
+    poll();
   });
 
   function autoGrow() {
@@ -409,21 +498,23 @@
       body: JSON.stringify({ message, name: usernameInput.value.trim() }),
     });
     await loadConversations();
-    fetchMessages();
+    poll();
   });
 
   resetButton.addEventListener("click", async () => {
     if (!currentConversationId) return;
     await fetch(`/conversations/${currentConversationId}/reset`, { method: "POST" });
+    typingName = null;
     await loadConversations();
-    fetchMessages();
+    poll();
   });
 
   async function init() {
     await loadPersonas();
+    renderPersonasBar();
     await loadConversations();
-    fetchMessages();
-    setInterval(fetchMessages, 1500);
+    await poll();
+    setInterval(poll, 1500);
   }
 
   init();

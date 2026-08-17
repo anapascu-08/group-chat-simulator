@@ -46,6 +46,7 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 ### Faza 5 — Frontend web minimal
 - Pagină HTML/JS simplă (fără framework) care: trimite mesajul userului la `POST /chat`, face polling sau ascultă SSE pe `/messages`, afișează mesajele cu nume + stil vizual distinct per persona, are un buton de reset.
 - Verificare manuală în browser: deschizi pagina, scrii un mesaj, vezi personas răspunzând unul câte unul.
+- Autocompletare `@nume` la scriere (dropdown filtrat, navigabil cu tastatura), listă vizibilă cu toate personas sub titlu, și indicator „X scrie..." (puncte animate) cât timp o persona generează efectiv un răspuns — `app.py` expune `GET /conversations/{id}/typing` (`{"name": ...}`), actualizat din `generate_round`; frontend-ul face polling pe el la fiecare 1.5s, alături de `/messages`.
 
 ### Faza 6 — Polish & demo readiness
 - Setează delay-ul implicit la 2-8 minute pentru modul demo (păstrând override rapid pentru dev).
@@ -64,7 +65,8 @@ Orchestrarea din Fazele 3-6 era inițial provizorie: round-robin, toate personas
   - Caz de margine — ultimul mesaj conține o mențiune care nu se potrivește nicio persona, și nimeni altcineva n-are mențiune activă: nimeni nu răspunde.
 - Fără nicio mențiune activă (nici curentă, nici mai veche, nerăspunsă încă): cade pe euristica de relevanță din `routing.py` (deterministă, neschimbată), aplicată pe ultimul mesaj.
 - `select_responders(history, personas, rng=random.random)` — ia acum istoricul complet (`Conversation.get_history()`), nu doar textul ultimului mesaj; `rng` e injectabil pentru teste deterministe (vezi `tests/test_responders.py`), la fel `create_app(..., rng=...)` în `app.py`.
-- `orchestrator.py` (`BEHAVIOR_GUIDELINES`) instruiește explicit personas să folosească `@Nume` când se adresează direct altcuiva din chat (user sau altă persona), ca mecanismul de mențiuni-între-ele să chiar se declanșeze în practică, nu doar tehnic.
+- `orchestrator.py` (`BEHAVIOR_GUIDELINES`) instruiește explicit (directiv, nu opțional) personas să folosească `@Nume` când se adresează direct altcuiva din chat (user sau altă persona), cu exemple curente (`@Cântărețul`, `@Eliade`) — verificat cu Ollama real că funcționează repetat, inclusiv o persona menționând trei altele într-un singur răspuns.
+- Dacă toate tragerile Bernoulli dintr-o rundă cu mențiuni active pică pe "nu" (nimeni nu răspunde), `select_responders` garantează totuși un răspuns — alege persoana cu cea mai mare probabilitate din acea rundă. (Cazul "mențiune explicită ce nu se potrivește nicio persona" rămâne "nu răspunde nimeni", neschimbat.)
 
 Idei rămase de explorat, fără decizie fermă încă:
 - Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv (independent de mențiuni).

@@ -59,6 +59,13 @@ def test_select_responders_applies_probability_threshold_via_injected_rng():
     assert result == [PERSONAS[0], PERSONAS[2]]
 
 
+def test_guarantees_at_least_one_responder_when_all_bernoulli_draws_fail():
+    # @Robi -> 0.8 (cel mai mare), ceilalți -> 0.1; rng=0.99 pică sub toate pragurile
+    history = hist(("Tu", "@Robi ce zici de religie?"))
+    result = select_responders(history, PERSONAS, rng=lambda: 0.99)
+    assert result == [PERSONAS[2]]
+
+
 def test_select_responders_uses_default_rng_when_not_injected():
     history = hist(("Tu", "@Robi ce zici de religie?"))
     result = select_responders(history, PERSONAS)
