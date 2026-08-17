@@ -28,6 +28,12 @@ Personas definite momentan în acest repo:
 | Cântărețul | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
 | Mircea Eliade | Istoric al religiilor, filozof și scriitor |
 | Șmecherașul | Un "smecheraș" care vrea să facă și el un ban |
+| Bunica Ileana | Bunică de la țară — grijulie, glumeață, mereu îngrijorată dacă ai mâncat |
+| Coana Puia | Vecina bârfitoare — știe tot ce se-ntâmplă în bloc |
+| Gigi Taximetristul | Taximetrist filozof — morocănos la suprafață, are o părere despre orice |
+| Mia Influencerița | Influenceriță pe social media — entuziastă, presară cuvinte în engleză |
+| Nelu Ardeleanul | Ardelean liniștit și tacticos — nu se grăbește niciodată |
+| Profesorul Ionescu | Profesor de matematică la pensie — pedant, corectează pe toată lumea |
 
 Toate personas folosesc același model Ollama (`gemma4:e2b`), apelat cu system prompt-ul propriu — vezi [`ollama_client.py`](./ollama_client.py).
 
