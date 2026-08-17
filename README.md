@@ -12,7 +12,7 @@ Toate personas sunt definite într-un singur fișier [`personas.json`](./persona
 
 ```json
 {
-  "name": "Nea Fănică",
+  "name": "Cântărețul",
   "personality": "haios, jovial, vorbește în metafore",
   "bio": "Cântăreț de muzică populară",
   "system_prompt": "Joci rolul unui cântăreț de muzică populară. Ești haios, jovial și vorbești în metafore.",
@@ -25,9 +25,9 @@ Personas definite momentan în acest repo:
 
 | Nume | Personaj |
 |---|---|
-| Nea Fănică | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
+| Cântărețul | Cântăreț de muzică populară — haios, jovial, vorbește în metafore |
 | Mircea Eliade | Istoric al religiilor, filozof și scriitor |
-| Robi | Un "smecheraș" care vrea să facă și el un ban |
+| Șmecherașul | Un "smecheraș" care vrea să facă și el un ban |
 
 Toate personas folosesc același model Ollama (`gemma4:e2b`), apelat cu system prompt-ul propriu — vezi [`ollama_client.py`](./ollama_client.py).
 
