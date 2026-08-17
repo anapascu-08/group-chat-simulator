@@ -10,7 +10,10 @@ BEHAVIOR_GUIDELINES = (
     "Rămâi tot timpul în rolul descris mai sus. Răspunde scurt — 1 paragraf, "
     "maxim 2 —, direct la subiectul ultimului mesaj din conversație. Nu te "
     "prezenta din nou dacă ai mai vorbit deja în conversație. Scrie ca într-un "
-    "mesaj normal de chat, text simplu — fără markdown (fără **, #, liste cu -)."
+    "mesaj normal de chat, text simplu — fără markdown (fără **, #, liste cu -). "
+    "Dacă vrei să te adresezi direct altcuiva din chat — userului sau altei "
+    "persoane —, poți începe sau strecura în mesaj @Nume (ex. @Robi, @Eliade), "
+    "ca într-un chat real de grup."
 )
 
 FALLBACK_REPLY = "..."

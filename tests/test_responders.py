@@ -1,4 +1,4 @@
-from responders import response_probabilities, select_responders
+from responders import pending_mentions, response_probabilities, select_responders
 
 PERSONAS = [
     {"name": "Nea Fănică", "personality": "haios, jovial, vorbește în metafore", "bio": "Cântăreț de muzică populară"},
@@ -11,49 +11,92 @@ PERSONAS = [
 ]
 
 
+def hist(*pairs):
+    return [{"name": name, "content": content} for name, content in pairs]
+
+
 def test_no_mention_falls_back_to_relevance():
-    result = select_responders("Ce ziceți despre mit și religie?", PERSONAS)
+    history = hist(("Tu", "Ce ziceți despre mit și religie?"))
+    result = select_responders(history, PERSONAS)
     assert result == [PERSONAS[1]]
 
 
 def test_no_mention_and_no_relevance_match_returns_all():
-    result = select_responders("Ce faceți diseară?", PERSONAS)
+    history = hist(("Tu", "Ce faceți diseară?"))
+    result = select_responders(history, PERSONAS)
     assert result == PERSONAS
 
 
 def test_one_mentioned_of_three_splits_80_10_10():
-    probs = response_probabilities("@Robi ce zici de religie?", PERSONAS)
+    history = hist(("Tu", "@Robi ce zici de religie?"))
+    probs = response_probabilities(history, PERSONAS)
     assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 0.8}
 
 
 def test_two_mentioned_of_three_splits_40_40_20():
-    probs = response_probabilities("@Robi @Fănică ce ziceți?", PERSONAS)
+    history = hist(("Tu", "@Robi @Fănică ce ziceți?"))
+    probs = response_probabilities(history, PERSONAS)
     assert probs == {"Nea Fănică": 0.4, "Robi": 0.4, "Mircea Eliade": 0.2}
 
 
 def test_all_mentioned_splits_evenly_to_100_percent():
-    probs = response_probabilities("@Robi @Fănică @Eliade salut", PERSONAS)
+    history = hist(("Tu", "@Robi @Fănică @Eliade salut"))
+    probs = response_probabilities(history, PERSONAS)
     assert probs == {"Nea Fănică": 1 / 3, "Mircea Eliade": 1 / 3, "Robi": 1 / 3}
 
 
-def test_mention_matching_nobody_gives_everyone_zero_probability():
-    probs = response_probabilities("@cineva salut", PERSONAS)
-    assert probs == {"Nea Fănică": 0.0, "Mircea Eliade": 0.0, "Robi": 0.0}
-
-
 def test_mention_matching_nobody_returns_none_regardless_of_rng():
-    # rng=0.0 ar selecta pe oricine cu probabilitate > 0 — aici nimeni nu are
-    result = select_responders("@cineva ce zici de religie?", PERSONAS, rng=lambda: 0.0)
+    history = hist(("Tu", "@cineva ce zici de religie?"))
+    result = select_responders(history, PERSONAS, rng=lambda: 0.0)
     assert result == []
 
 
 def test_select_responders_applies_probability_threshold_via_injected_rng():
     # @Robi -> 0.8, ceilalți -> 0.1 fiecare
+    history = hist(("Tu", "@Robi ce zici de religie?"))
     values = iter([0.05, 0.5, 0.79])  # Fănică(0.1): sub prag; Eliade(0.1): peste prag; Robi(0.8): sub prag
-    result = select_responders("@Robi ce zici de religie?", PERSONAS, rng=lambda: next(values))
+    result = select_responders(history, PERSONAS, rng=lambda: next(values))
     assert result == [PERSONAS[0], PERSONAS[2]]
 
 
 def test_select_responders_uses_default_rng_when_not_injected():
-    result = select_responders("@Robi ce zici de religie?", PERSONAS)
+    history = hist(("Tu", "@Robi ce zici de religie?"))
+    result = select_responders(history, PERSONAS)
     assert all(p in PERSONAS for p in result)
+
+
+def test_mention_stays_pending_across_messages_until_persona_speaks():
+    # @Eliade e menționat, dar userul mai trimite un mesaj fără @ înainte ca
+    # Eliade să apuce să răspundă — mențiunea rămâne activă.
+    history = hist(
+        ("Tu", "@Eliade ce zici de mit?"),
+        ("Robi", "las-o, frate, hai să vorbim de bani"),
+        ("Tu", "serios acum"),
+    )
+    assert pending_mentions(history, PERSONAS) == [PERSONAS[1]]
+
+
+def test_mention_is_consumed_once_persona_speaks():
+    history = hist(
+        ("Tu", "@Eliade ce zici de mit?"),
+        ("Mircea Eliade", "Mitul e o structură arhetipală..."),
+        ("Tu", "interesant"),
+    )
+    assert pending_mentions(history, PERSONAS) == []
+
+
+def test_persona_can_mention_another_persona_and_it_stays_pending():
+    history = hist(
+        ("Tu", "ce ziceți?"),
+        ("Nea Fănică", "hooo, @Robi ce zici tu de asta?"),
+    )
+    assert pending_mentions(history, PERSONAS) == [PERSONAS[2]]
+
+
+def test_probabilities_use_pending_mention_from_earlier_message_without_current_at_symbol():
+    history = hist(
+        ("Tu", "@Robi ce faci?"),
+        ("Tu", "alo, ești acolo?"),
+    )
+    probs = response_probabilities(history, PERSONAS)
+    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 0.8}

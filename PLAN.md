@@ -56,18 +56,19 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 ### Faza 7 — Orchestrare inteligentă (post-MVP)
 Orchestrarea din Fazele 3-6 era inițial provizorie: round-robin, toate personas răspund pe rând la fiecare mesaj, filtrate doar de mențiuni `@nume` (vezi `mentions.py`). Nu ținea cont de relevanță — într-un grup chat real, nu toată lumea reacționează la fiecare mesaj.
 
-**Decis și implementat**: selecție probabilistă pe mențiuni explicite, în `responders.py` (`response_probabilities` + `select_responders`).
-- Când mesajul conține cel puțin o mențiune `@nume`: grupul personas menționate își împarte în total 80% probabilitate de răspuns (`MENTIONED_SHARE`), egal între membri; grupul nemenționat își împarte restul de 20% (`UNMENTIONED_SHARE`), egal între membri. Fiecare persona decide independent (Bernoulli) — pot răspunde 0, una, mai multe sau toate.
-  - Ex. 3 personas, 2 menționate: 40% / 40% / 20%. 3 personas, 1 menționată: 80% / 10% / 10%.
-  - Caz de margine — toate personas menționate (grup nemenționat gol): grupul menționat primește 100%, împărțit egal.
-  - Caz de margine — mențiune care nu se potrivește nicio persona: nimeni nu răspunde (probabilitate 0 pentru toți), ca înainte.
-- Fără nicio mențiune `@`: rămâne euristica de relevanță din `routing.py` (deterministă, neschimbată) — mențiunile au mereu prioritate absolută asupra relevanței tematice.
-- `select_responders(text, personas, rng=random.random)` — `rng` e injectabil pentru teste deterministe (vezi `tests/test_responders.py`), la fel `create_app(..., rng=...)` în `app.py`.
+**Decis și implementat**: selecție probabilistă pe mențiuni active, în `responders.py` (`pending_mentions` + `response_probabilities` + `select_responders`). Operează pe tot istoricul conversației, nu doar pe ultimul mesaj.
+- O mențiune `@nume` rămâne "activă" (pending) pentru o persona de la momentul în care a fost menționată până când acea persona vorbește din nou — indiferent câte mesaje trec între timp. Mențiunea poate veni de la user SAU de la altă persona (personas se pot menționa între ele, nu doar userul le poate menționa).
+- Când există cel puțin o persona cu mențiune activă: grupul menționat își împarte în total 80% probabilitate de răspuns (`MENTIONED_SHARE`), egal între membri; grupul fără mențiune activă își împarte restul de 20% (`UNMENTIONED_SHARE`), egal între membri. Fiecare persona decide independent (Bernoulli) — pot răspunde 0, una, mai multe sau toate.
+  - Ex. 3 personas, 2 cu mențiune activă: 40% / 40% / 20%. 3 personas, 1 cu mențiune activă: 80% / 10% / 10%.
+  - Caz de margine — toate personas au mențiune activă (grup fără mențiune gol): grupul menționat primește 100%, împărțit egal.
+  - Caz de margine — ultimul mesaj conține o mențiune care nu se potrivește nicio persona, și nimeni altcineva n-are mențiune activă: nimeni nu răspunde.
+- Fără nicio mențiune activă (nici curentă, nici mai veche, nerăspunsă încă): cade pe euristica de relevanță din `routing.py` (deterministă, neschimbată), aplicată pe ultimul mesaj.
+- `select_responders(history, personas, rng=random.random)` — ia acum istoricul complet (`Conversation.get_history()`), nu doar textul ultimului mesaj; `rng` e injectabil pentru teste deterministe (vezi `tests/test_responders.py`), la fel `create_app(..., rng=...)` în `app.py`.
+- `orchestrator.py` (`BEHAVIOR_GUIDELINES`) instruiește explicit personas să folosească `@Nume` când se adresează direct altcuiva din chat (user sau altă persona), ca mecanismul de mențiuni-între-ele să chiar se declanșeze în practică, nu doar tehnic.
 
 Idei rămase de explorat, fără decizie fermă încă:
-- Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv.
-- Posibilitate ca o persona să reacționeze la răspunsul altei persona din aceeași rundă (nu doar la mesajul userului), pentru dinamici de tip "ceartă"/"aliniere" între personaje.
-- Extinderea euristicii de relevanță (fără mențiuni) cu o pondere probabilistă similară, în loc de all-or-nothing.
+- Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv (independent de mențiuni).
+- Extinderea euristicii de relevanță (fără mențiuni active) cu o pondere probabilistă similară, în loc de all-or-nothing.
 
 ### Faza 8 — Persistență conversații (JSON per conversație) — IMPLEMENTAT
 Istoricul trăia doar în memorie (`Conversation`) — un restart de server sau proces CLI îl pierdea definitiv. Acum fiecare conversație e persistată într-un fișier JSON propriu, în directorul `conversations/` (ignorat în git), numit după un id (uuid4 hex), cu `created_at` separat pentru sortare.

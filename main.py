@@ -37,7 +37,7 @@ def main() -> None:
         conversation.add_message(HUMAN_NAME, user_message)
 
         target_message = {"name": HUMAN_NAME, "content": user_message}
-        for persona in select_responders(user_message, personas):
+        for persona in select_responders(conversation.get_history(), personas):
             time.sleep(random.uniform(*get_delay_range_seconds()))
             reply = respond_as(conversation, persona, target_message=target_message)
             print(f"{persona['name']}: {reply}\n")

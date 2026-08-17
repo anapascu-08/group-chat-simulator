@@ -86,7 +86,7 @@ def create_app(
 
         round_id = state["round_ids"].get(conversation_id, 0) + 1
         state["round_ids"][conversation_id] = round_id
-        targets = select_responders(payload.message, state["personas"], rng=rng)
+        targets = select_responders(conversation.get_history(), state["personas"], rng=rng)
         target_message = {"name": sender, "content": payload.message}
         background_tasks.add_task(generate_round, conversation_id, round_id, targets, target_message)
         return {"status": "ok"}

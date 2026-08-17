@@ -10,15 +10,36 @@ MENTIONED_SHARE = 0.8
 UNMENTIONED_SHARE = 0.2
 
 
-def response_probabilities(text: str, personas: list[dict]) -> dict[str, float]:
-    """Probabilitatea, per persona, de a răspunde la un mesaj cu mențiuni @nume.
+def pending_mentions(history: list[dict], personas: list[dict]) -> list[dict]:
+    """Personas menționate (de oricine — user sau altă persona) de la ultimul
+    lor mesaj încoace, care încă n-au apucat să răspundă.
 
-    Grupul menționat își împarte în total MENTIONED_SHARE, grupul nemenționat
-    își împarte restul — egal între membrii fiecărui grup. Dacă un grup e gol,
-    celălalt primește 100%. Dacă mențiunea nu se potrivește nicio persona,
-    nimeni nu primește șansă de răspuns.
+    Dacă o persona nu a vorbit niciodată, se ia în calcul tot istoricul. O
+    mențiune rămâne "activă" oricât ar dura, până persona vorbește din nou —
+    apoi se consideră consumată.
     """
-    mentioned = mentioned_personas(text, personas)
+    pending = []
+    for persona in personas:
+        last_spoken = -1
+        for i, msg in enumerate(history):
+            if msg["name"] == persona["name"]:
+                last_spoken = i
+        text_since = " ".join(m["content"] for m in history[last_spoken + 1 :])
+        if has_mention(text_since) and persona in mentioned_personas(text_since, personas):
+            pending.append(persona)
+    return pending
+
+
+def response_probabilities(history: list[dict], personas: list[dict]) -> dict[str, float]:
+    """Probabilitatea, per persona, de a răspunde, pe baza mențiunilor active.
+
+    Grupul menționat (vezi `pending_mentions`) își împarte în total
+    MENTIONED_SHARE, grupul nemenționat își împarte restul — egal între
+    membrii fiecărui grup. Dacă un grup e gol, celălalt primește 100%. Dacă
+    nimeni nu are o mențiune activă, toți primesc 0 (apelantul ar trebui să
+    cadă pe euristica de relevanță, vezi `select_responders`).
+    """
+    mentioned = pending_mentions(history, personas)
     if not mentioned:
         return {p["name"]: 0.0 for p in personas}
 
@@ -37,15 +58,23 @@ def response_probabilities(text: str, personas: list[dict]) -> dict[str, float]:
     return probs
 
 
-def select_responders(text: str, personas: list[dict], rng=random.random) -> list[dict]:
-    """Cine răspunde la un mesaj.
+def select_responders(history: list[dict], personas: list[dict], rng=random.random) -> list[dict]:
+    """Cine răspunde, pe baza istoricului complet al conversației.
 
-    Cu mențiuni @nume, fiecare persona decide independent, cu propria
+    Dacă există mențiuni active (curente sau mai vechi, nerăspunse încă —
+    vezi `pending_mentions`), fiecare persona decide independent, cu propria
     probabilitate din `response_probabilities` (Bernoulli — pot răspunde 0,
-    una, mai multe sau toate). Fără mențiuni, cade pe euristica de relevanță
-    din `routing.py` (deterministă).
+    una, mai multe sau toate). Dacă ultimul mesaj conține o mențiune care nu
+    se potrivește nicio persona (și nimeni altcineva nu are o mențiune
+    activă), nu răspunde nimeni. Altfel, cade pe euristica de relevanță din
+    `routing.py` (deterministă), aplicată pe ultimul mesaj.
     """
-    if has_mention(text):
-        probs = response_probabilities(text, personas)
+    last_message = history[-1]["content"] if history else ""
+
+    mentioned = pending_mentions(history, personas)
+    if mentioned:
+        probs = response_probabilities(history, personas)
         return [p for p in personas if rng() < probs[p["name"]]]
-    return relevant_personas(text, personas)
+    if has_mention(last_message):
+        return []
+    return relevant_personas(last_message, personas)
