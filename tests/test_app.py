@@ -4,6 +4,7 @@ from app import create_app
 
 PERSONAS = [
     {
+        "id": "a-role",
         "name": "A",
         "system_prompt": "sp-a",
         "temperature": 0.5,
@@ -12,6 +13,7 @@ PERSONAS = [
         "emoji": "🅰️",
     },
     {
+        "id": "b-role",
         "name": "B",
         "system_prompt": "sp-b",
         "temperature": 0.5,
@@ -26,12 +28,15 @@ def fake_generate_response(system_prompt, messages, temperature):
     return f"raspuns pentru {system_prompt}"
 
 
-def make_client(generate_response=fake_generate_response, personas=None, tmp_path=None):
+# rng=0.5 implicit: cade sub pragul grupului menționat (0.8) și peste cel
+# nemenționat (0.2) în testele cu 2 personas, deci selecția rămâne deterministă.
+def make_client(generate_response=fake_generate_response, personas=None, tmp_path=None, rng=lambda: 0.5):
     app = create_app(
         personas=personas if personas is not None else PERSONAS,
         generate_response=generate_response,
         delay_range=lambda: (0.0, 0.0),
         conversations_dir=tmp_path,
+        rng=rng,
     )
     return TestClient(app)
 
@@ -142,8 +147,8 @@ def test_personas_endpoint_returns_name_and_emoji(tmp_path):
 
     assert response.status_code == 200
     assert response.json() == [
-        {"name": "A", "emoji": "🅰️", "color": ""},
-        {"name": "B", "emoji": "🅱️", "color": ""},
+        {"id": "a-role", "name": "A", "emoji": "🅰️", "color": ""},
+        {"id": "b-role", "name": "B", "emoji": "🅱️", "color": ""},
     ]
 
 

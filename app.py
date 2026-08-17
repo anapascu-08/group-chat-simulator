@@ -32,6 +32,7 @@ def create_app(
     generate_response: Callable = _default_generate_response,
     delay_range: Callable = get_delay_range_seconds,
     conversations_dir: Union[str, Path] = CONVERSATIONS_DIR,
+    rng: Callable = random.random,
 ) -> FastAPI:
     app = FastAPI(title="Group Chat Simulator")
     store = ConversationStore(conversations_dir)
@@ -85,7 +86,7 @@ def create_app(
 
         round_id = state["round_ids"].get(conversation_id, 0) + 1
         state["round_ids"][conversation_id] = round_id
-        targets = select_responders(payload.message, state["personas"])
+        targets = select_responders(payload.message, state["personas"], rng=rng)
         target_message = {"name": sender, "content": payload.message}
         background_tasks.add_task(generate_round, conversation_id, round_id, targets, target_message)
         return {"status": "ok"}
@@ -101,7 +102,7 @@ def create_app(
     @app.get("/personas")
     def get_personas():
         return [
-            {"name": p["name"], "emoji": p.get("emoji", ""), "color": p.get("color", "")}
+            {"id": p.get("id", ""), "name": p["name"], "emoji": p.get("emoji", ""), "color": p.get("color", "")}
             for p in state["personas"]
         ]
 

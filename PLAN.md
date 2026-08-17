@@ -54,12 +54,20 @@ Din Faza 2 încolo, componentele cu logică deterministă se scriu TDD (roșu �
 - "Vibe check" end-to-end: succesul definit în SPEC.md — mesaj user + 3-4 personas răspund natural, ținând cont de conversație.
 
 ### Faza 7 — Orchestrare inteligentă (post-MVP)
-Orchestrarea din Fazele 3-6 e explicit provizorie: round-robin, toate personas răspund pe rând la fiecare mesaj, filtrate doar de mențiuni `@nume` (vezi `mentions.py`). Nu ține cont de relevanță — într-un grup chat real, nu toată lumea reacționează la fiecare mesaj. Idei de explorat, fără decizie fermă încă:
-- Un pas de "routing" înaintea generării: un apel LLM (sau euristică) care decide *care* personas ar reacționa plauzibil la ultimul mesaj, pe baza personalității/bio-ului fiecăreia, nu doar prezența unei mențiuni.
-- Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv (evită zgomotul de "toată lumea răspunde mereu").
+Orchestrarea din Fazele 3-6 era inițial provizorie: round-robin, toate personas răspund pe rând la fiecare mesaj, filtrate doar de mențiuni `@nume` (vezi `mentions.py`). Nu ținea cont de relevanță — într-un grup chat real, nu toată lumea reacționează la fiecare mesaj.
+
+**Decis și implementat**: selecție probabilistă pe mențiuni explicite, în `responders.py` (`response_probabilities` + `select_responders`).
+- Când mesajul conține cel puțin o mențiune `@nume`: grupul personas menționate își împarte în total 80% probabilitate de răspuns (`MENTIONED_SHARE`), egal între membri; grupul nemenționat își împarte restul de 20% (`UNMENTIONED_SHARE`), egal între membri. Fiecare persona decide independent (Bernoulli) — pot răspunde 0, una, mai multe sau toate.
+  - Ex. 3 personas, 2 menționate: 40% / 40% / 20%. 3 personas, 1 menționată: 80% / 10% / 10%.
+  - Caz de margine — toate personas menționate (grup nemenționat gol): grupul menționat primește 100%, împărțit egal.
+  - Caz de margine — mențiune care nu se potrivește nicio persona: nimeni nu răspunde (probabilitate 0 pentru toți), ca înainte.
+- Fără nicio mențiune `@`: rămâne euristica de relevanță din `routing.py` (deterministă, neschimbată) — mențiunile au mereu prioritate absolută asupra relevanței tematice.
+- `select_responders(text, personas, rng=random.random)` — `rng` e injectabil pentru teste deterministe (vezi `tests/test_responders.py`), la fel `create_app(..., rng=...)` în `app.py`.
+
+Idei rămase de explorat, fără decizie fermă încă:
+- Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv.
 - Posibilitate ca o persona să reacționeze la răspunsul altei persona din aceeași rundă (nu doar la mesajul userului), pentru dinamici de tip "ceartă"/"aliniere" între personaje.
-- De văzut dacă routing-ul e un apel LLM separat (cost/latență suplimentară) sau o euristică simplă (scor de relevanță pe cuvinte-cheie din bio/personality).
-- Rămâne compatibil cu mențiunile explicite `@nume` din Faza curentă — o mențiune explicită ar trebui să aibă mereu prioritate față de orice euristică de relevanță.
+- Extinderea euristicii de relevanță (fără mențiuni) cu o pondere probabilistă similară, în loc de all-or-nothing.
 
 ### Faza 8 — Persistență conversații (JSON per conversație) — IMPLEMENTAT
 Istoricul trăia doar în memorie (`Conversation`) — un restart de server sau proces CLI îl pierdea definitiv. Acum fiecare conversație e persistată într-un fișier JSON propriu, în directorul `conversations/` (ignorat în git), numit după un id (uuid4 hex), cu `created_at` separat pentru sortare.

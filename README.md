@@ -12,6 +12,7 @@ Toate personas sunt definite într-un singur fișier [`personas.json`](./persona
 
 ```json
 {
+  "id": "cantaret",
   "name": "Cântărețul",
   "personality": "haios, jovial, vorbește în metafore",
   "bio": "Cântăreț de muzică populară",
@@ -20,6 +21,8 @@ Toate personas sunt definite într-un singur fișier [`personas.json`](./persona
   "emoji": "🪗"
 }
 ```
+
+`id` e un identificator stabil bazat pe rol (nu pe numele personajului), gândit să rămână neschimbat chiar dacă `name` se schimbă.
 
 Personas definite momentan în acest repo:
 
