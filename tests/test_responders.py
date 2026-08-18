@@ -24,7 +24,14 @@ def test_no_mention_falls_back_to_relevance():
 def test_no_mention_and_no_relevance_match_returns_all():
     history = hist(("Tu", "Ce faceți diseară?"))
     result = select_responders(history, PERSONAS)
-    assert result == PERSONAS
+    assert {p["name"] for p in result} == {p["name"] for p in PERSONAS}
+
+
+def test_select_responders_shuffles_order_when_multiple_respond():
+    history = hist(("Tu", "Ce faceți diseară?"))
+    values = iter([0.0, 0.0])  # Fisher-Yates: aduce Robi, apoi Eliade, în față
+    result = select_responders(history, PERSONAS, rng=lambda: next(values))
+    assert result == [PERSONAS[1], PERSONAS[2], PERSONAS[0]]
 
 
 def test_mentioned_persona_gets_certain_response_others_get_unmentioned_share():
@@ -61,7 +68,8 @@ def test_mentioned_persona_always_responds_even_when_rng_would_fail_bernoulli():
 def test_unmentioned_persona_can_join_via_probability_threshold():
     # @Robi -> menționat, răspunde garantat; ceilalți -> 0.1 fiecare (UNMENTIONED_SHARE/2)
     history = hist(("Tu", "@Robi ce zici de religie?"))
-    values = iter([0.05, 0.5])  # Fănică(0.1): sub prag -> se bagă; Eliade(0.1): peste prag -> nu
+    # Fănică(0.1): sub prag -> se bagă; Eliade(0.1): peste prag -> nu; 0.99 -> amestecul nu schimbă ordinea
+    values = iter([0.05, 0.5, 0.99])
     result = select_responders(history, PERSONAS, rng=lambda: next(values))
     assert result == [PERSONAS[2], PERSONAS[0]]
 

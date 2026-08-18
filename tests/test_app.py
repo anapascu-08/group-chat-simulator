@@ -161,6 +161,7 @@ def test_typing_shows_persona_name_while_generating_and_clears_after(tmp_path):
         generate_response=fake_generate_response,
         delay_range=lambda: (0.0, 0.0),
         conversations_dir=tmp_path,
+        rng=lambda: 0.5,
     )
     client = TestClient(app)
     conversation_id = first_conversation_id(client)
