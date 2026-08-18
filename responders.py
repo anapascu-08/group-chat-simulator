@@ -6,7 +6,6 @@ import random
 from mentions import has_mention, mentioned_personas
 from routing import relevant_personas
 
-MENTIONED_SHARE = 0.5
 UNMENTIONED_SHARE = 0.2
 
 
@@ -33,11 +32,12 @@ def pending_mentions(history: list[dict], personas: list[dict]) -> list[dict]:
 def response_probabilities(history: list[dict], personas: list[dict]) -> dict[str, float]:
     """Probabilitatea, per persona, de a răspunde, pe baza mențiunilor active.
 
-    Grupul menționat (vezi `pending_mentions`) își împarte în total
-    MENTIONED_SHARE, grupul nemenționat își împarte restul — egal între
-    membrii fiecărui grup. Dacă un grup e gol, celălalt primește 100%. Dacă
-    nimeni nu are o mențiune activă, toți primesc 0 (apelantul ar trebui să
-    cadă pe euristica de relevanță, vezi `select_responders`).
+    Personas menționate (vezi `pending_mentions`) au probabilitate 1.0 —
+    răspund garantat, indiferent câte mesaje au trecut de la mențiune. Cele
+    nemenționate își împart UNMENTIONED_SHARE în mod egal, ca să mai poată
+    interveni ocazional. Dacă nimeni nu are o mențiune activă, toți primesc
+    0 (apelantul ar trebui să cadă pe euristica de relevanță, vezi
+    `select_responders`).
     """
     mentioned = pending_mentions(history, personas)
     if not mentioned:
@@ -46,14 +46,9 @@ def response_probabilities(history: list[dict], personas: list[dict]) -> dict[st
     mentioned_names = {p["name"] for p in mentioned}
     unmentioned = [p for p in personas if p["name"] not in mentioned_names]
 
+    probs = {name: 1.0 for name in mentioned_names}
     if unmentioned:
-        mentioned_total, unmentioned_total = MENTIONED_SHARE, UNMENTIONED_SHARE
-    else:
-        mentioned_total, unmentioned_total = 1.0, 0.0
-
-    probs = {p["name"]: mentioned_total / len(mentioned) for p in mentioned}
-    if unmentioned:
-        share = unmentioned_total / len(unmentioned)
+        share = UNMENTIONED_SHARE / len(unmentioned)
         probs.update({p["name"]: share for p in unmentioned})
     return probs
 
@@ -62,24 +57,23 @@ def select_responders(history: list[dict], personas: list[dict], rng=random.rand
     """Cine răspunde, pe baza istoricului complet al conversației.
 
     Dacă există mențiuni active (curente sau mai vechi, nerăspunse încă —
-    vezi `pending_mentions`), fiecare persona decide independent, cu propria
-    probabilitate din `response_probabilities` (Bernoulli — pot răspunde 0,
-    una, mai multe sau toate) — dar dacă toate tragerile pică pe "nu", se
-    alege totuși un răspuns, la întâmplare dintre toate personas, ca mesajul
-    să nu rămână fără niciun răspuns. Dacă ultimul mesaj conține o mențiune
-    care nu se potrivește nicio persona (și nimeni altcineva nu are o
-    mențiune activă), nu răspunde nimeni. Altfel, cade pe euristica de
-    relevanță din `routing.py` (deterministă), aplicată pe ultimul mesaj.
+    vezi `pending_mentions`), toate personas menționate răspund garantat,
+    indiferent câte mesaje au trecut de la mențiune. Cele nemenționate mai
+    pot interveni ocazional, fiecare cu propria probabilitate din
+    `response_probabilities` (Bernoulli, folosind partea UNMENTIONED_SHARE
+    din probabilități). Dacă ultimul mesaj conține o mențiune care nu se
+    potrivește nicio persona (și nimeni altcineva nu are o mențiune
+    activă), nu răspunde nimeni. Altfel, cade pe euristica de relevanță din
+    `routing.py` (deterministă), aplicată pe ultimul mesaj.
     """
     last_message = history[-1]["content"] if history else ""
 
     mentioned = pending_mentions(history, personas)
     if mentioned:
+        mentioned_names = {p["name"] for p in mentioned}
         probs = response_probabilities(history, personas)
-        selected = [p for p in personas if rng() < probs[p["name"]]]
-        if not selected:
-            selected = [personas[int(rng() * len(personas))]]
-        return selected
+        extra = [p for p in personas if p["name"] not in mentioned_names and rng() < probs[p["name"]]]
+        return mentioned + extra
     if has_mention(last_message):
         return []
     return relevant_personas(last_message, personas)

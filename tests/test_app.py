@@ -28,9 +28,10 @@ def fake_generate_response(system_prompt, messages, temperature):
     return f"raspuns pentru {system_prompt}"
 
 
-# rng=0.35 implicit: cade sub pragul grupului menționat (0.5) și peste cel
-# nemenționat (0.2) în testele cu 2 personas, deci selecția rămâne deterministă.
-def make_client(generate_response=fake_generate_response, personas=None, tmp_path=None, rng=lambda: 0.35):
+# rng=0.5 implicit: peste pragul grupului nemenționat (0.2) în testele cu 2
+# personas, deci cel nemenționat nu se bagă și selecția rămâne deterministă
+# (cel menționat răspunde garantat, nu mai depinde de rng).
+def make_client(generate_response=fake_generate_response, personas=None, tmp_path=None, rng=lambda: 0.5):
     app = create_app(
         personas=personas if personas is not None else PERSONAS,
         generate_response=generate_response,

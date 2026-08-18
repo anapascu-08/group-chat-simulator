@@ -157,7 +157,6 @@
   }
   button.secondary { background: #999; }
   #new-conversation-button { background: #059669; }
-  #reset-button { background: #d97706; }
   #delete-conversation-button { background: #dc2626; }
   #status { font-size: 0.8rem; color: #666; min-height: 1.2em; margin-top: 0.35rem; }
 </style>
@@ -181,7 +180,6 @@
       <textarea id="message-input" placeholder="Scrie un mesaj... @nume pentru a menționa pe cineva anume" autocomplete="off" rows="1"></textarea>
     </div>
     <button type="submit">Trimite</button>
-    <button type="button" id="reset-button" class="secondary">Reset</button>
   </form>
   <div id="status"></div>
 
@@ -189,7 +187,6 @@
   const messagesEl = document.getElementById("messages");
   const formEl = document.getElementById("chat-form");
   const inputEl = document.getElementById("message-input");
-  const resetButton = document.getElementById("reset-button");
   const statusEl = document.getElementById("status");
   const usernameInput = document.getElementById("username-input");
   const conversationSelect = document.getElementById("conversation-select");
@@ -546,14 +543,6 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, name: usernameInput.value.trim() }),
     });
-    await loadConversations();
-    poll();
-  });
-
-  resetButton.addEventListener("click", async () => {
-    if (!currentConversationId) return;
-    await fetch(`/conversations/${currentConversationId}/reset`, { method: "POST" });
-    typingName = null;
     await loadConversations();
     poll();
   });
