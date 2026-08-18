@@ -27,16 +27,16 @@ def test_no_mention_and_no_relevance_match_returns_all():
     assert result == PERSONAS
 
 
-def test_one_mentioned_of_three_splits_80_10_10():
+def test_one_mentioned_of_three_splits_50_10_10():
     history = hist(("Tu", "@Robi ce zici de religie?"))
     probs = response_probabilities(history, PERSONAS)
-    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 0.8}
+    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 0.5}
 
 
-def test_two_mentioned_of_three_splits_40_40_20():
+def test_two_mentioned_of_three_splits_25_25_20():
     history = hist(("Tu", "@Robi @Fănică ce ziceți?"))
     probs = response_probabilities(history, PERSONAS)
-    assert probs == {"Nea Fănică": 0.4, "Robi": 0.4, "Mircea Eliade": 0.2}
+    assert probs == {"Nea Fănică": 0.25, "Robi": 0.25, "Mircea Eliade": 0.2}
 
 
 def test_all_mentioned_splits_evenly_to_100_percent():
@@ -52,18 +52,26 @@ def test_mention_matching_nobody_returns_none_regardless_of_rng():
 
 
 def test_select_responders_applies_probability_threshold_via_injected_rng():
-    # @Robi -> 0.8, ceilalți -> 0.1 fiecare
+    # @Robi -> 0.5, ceilalți -> 0.1 fiecare
     history = hist(("Tu", "@Robi ce zici de religie?"))
-    values = iter([0.05, 0.5, 0.79])  # Fănică(0.1): sub prag; Eliade(0.1): peste prag; Robi(0.8): sub prag
+    values = iter([0.05, 0.5, 0.49])  # Fănică(0.1): sub prag; Eliade(0.1): peste prag; Robi(0.5): sub prag
     result = select_responders(history, PERSONAS, rng=lambda: next(values))
     assert result == [PERSONAS[0], PERSONAS[2]]
 
 
-def test_guarantees_at_least_one_responder_when_all_bernoulli_draws_fail():
-    # @Robi -> 0.8 (cel mai mare), ceilalți -> 0.1; rng=0.99 pică sub toate pragurile
+def test_guarantees_a_random_responder_when_all_bernoulli_draws_fail():
+    # Toate tragerile pică (0.99 > orice prag) -> se alege totuși cineva, la
+    # întâmplare din toate personas, folosind încă o tragere din rng.
     history = hist(("Tu", "@Robi ce zici de religie?"))
-    result = select_responders(history, PERSONAS, rng=lambda: 0.99)
-    assert result == [PERSONAS[2]]
+    values = iter([0.99, 0.99, 0.99, 0.5])  # ultima tragere -> index 1 din 3 -> Eliade
+    result = select_responders(history, PERSONAS, rng=lambda: next(values))
+    assert result == [PERSONAS[1]]
+
+
+def test_all_mentioned_personas_can_all_respond_together():
+    history = hist(("Tu", "@Robi @Fănică ce ziceți?"))
+    result = select_responders(history, PERSONAS, rng=lambda: 0.0)
+    assert result == PERSONAS
 
 
 def test_select_responders_uses_default_rng_when_not_injected():
@@ -106,4 +114,4 @@ def test_probabilities_use_pending_mention_from_earlier_message_without_current_
         ("Tu", "alo, ești acolo?"),
     )
     probs = response_probabilities(history, PERSONAS)
-    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 0.8}
+    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 0.5}

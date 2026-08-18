@@ -6,7 +6,7 @@ import random
 from mentions import has_mention, mentioned_personas
 from routing import relevant_personas
 
-MENTIONED_SHARE = 0.8
+MENTIONED_SHARE = 0.5
 UNMENTIONED_SHARE = 0.2
 
 
@@ -64,12 +64,12 @@ def select_responders(history: list[dict], personas: list[dict], rng=random.rand
     Dacă există mențiuni active (curente sau mai vechi, nerăspunse încă —
     vezi `pending_mentions`), fiecare persona decide independent, cu propria
     probabilitate din `response_probabilities` (Bernoulli — pot răspunde 0,
-    una, mai multe sau toate) — dar dacă toate tragerile pică pe "nu", răspunde
-    oricum persoana cu cea mai mare probabilitate, ca mesajul să nu rămână
-    fără niciun răspuns. Dacă ultimul mesaj conține o mențiune care nu se
-    potrivește nicio persona (și nimeni altcineva nu are o mențiune activă),
-    nu răspunde nimeni. Altfel, cade pe euristica de relevanță din
-    `routing.py` (deterministă), aplicată pe ultimul mesaj.
+    una, mai multe sau toate) — dar dacă toate tragerile pică pe "nu", se
+    alege totuși un răspuns, la întâmplare dintre toate personas, ca mesajul
+    să nu rămână fără niciun răspuns. Dacă ultimul mesaj conține o mențiune
+    care nu se potrivește nicio persona (și nimeni altcineva nu are o
+    mențiune activă), nu răspunde nimeni. Altfel, cade pe euristica de
+    relevanță din `routing.py` (deterministă), aplicată pe ultimul mesaj.
     """
     last_message = history[-1]["content"] if history else ""
 
@@ -78,7 +78,7 @@ def select_responders(history: list[dict], personas: list[dict], rng=random.rand
         probs = response_probabilities(history, personas)
         selected = [p for p in personas if rng() < probs[p["name"]]]
         if not selected:
-            selected = [max(personas, key=lambda p: probs[p["name"]])]
+            selected = [personas[int(rng() * len(personas))]]
         return selected
     if has_mention(last_message):
         return []
