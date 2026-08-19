@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Group Chat Simulator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%AC%3C/text%3E%3C/svg%3E" />
 <style>
   :root {
     --bg-page: #dcdce3;
@@ -74,21 +75,40 @@
     background: var(--bg-surface);
     color: var(--text-primary);
   }
+  #personas-toggle {
+    background: none;
+    color: var(--text-muted);
+    padding: 0.2rem 0;
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
+  }
+  #personas-toggle:hover { color: var(--text-primary); }
   #personas-bar {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
     margin-bottom: 0.75rem;
+    padding: 0.6rem;
+    background: var(--bg-messages);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
   }
+  #personas-bar[hidden] { display: none; }
   .persona-chip {
     display: inline-flex;
     align-items: center;
+    gap: 0.3rem;
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
     background: var(--bg-surface);
     border: 1px solid var(--border-color-light);
     font-size: 0.8rem;
     white-space: nowrap;
+  }
+  .persona-chip .info-icon {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    cursor: help;
   }
   #conversation-bar {
     display: flex;
@@ -161,14 +181,28 @@
   .message .time { font-size: 0.7rem; color: var(--text-muted); }
   .message .content { white-space: pre-wrap; word-break: break-word; }
   #empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
+    text-align: center;
     color: var(--text-faint);
     font-size: 0.9rem;
-    text-align: center;
+    padding: 2rem 1rem;
   }
+  #empty-state p { margin: 0 0 0.75rem; }
+  #prompt-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+  }
+  .suggestion-chip {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+  .suggestion-chip:hover { background: var(--mention-hover-bg); }
   .typing-dots { display: flex; gap: 0.2rem; padding: 0.15rem 0; }
   .typing-dots span {
     width: 6px;
@@ -204,6 +238,12 @@
     line-height: 1.4;
     background: var(--bg-surface);
     color: var(--text-primary);
+  }
+  #message-input::placeholder { color: var(--text-muted); }
+  @media (prefers-color-scheme: dark) {
+    /* placeholder-ul implicit al browserului iese prea subțire/estompat pe
+       fundal întunecat — îl îngroșăm ca să se citească mai clar */
+    #message-input::placeholder { font-weight: 600; }
   }
   #mention-list {
     position: absolute;
@@ -255,7 +295,8 @@
 </head>
 <body>
   <h1>Group Chat Simulator</h1>
-  <div id="personas-bar"></div>
+  <button type="button" id="personas-toggle" class="secondary"></button>
+  <div id="personas-bar" hidden></div>
   <div id="conversation-bar">
     <select id="conversation-select"></select>
     <button type="button" id="new-conversation-button" class="secondary">+ Nouă</button>
@@ -276,7 +317,7 @@
     </div>
     <button type="submit" id="send-button">Trimite</button>
   </form>
-  <div id="status"></div>
+  <div id="status" role="status" aria-live="polite"></div>
 
 <script>
   const messagesEl = document.getElementById("messages");
@@ -290,10 +331,14 @@
   const mentionListEl = document.getElementById("mention-list");
   const scrollBottomButton = document.getElementById("scroll-bottom-button");
   const submitButton = document.getElementById("send-button");
+  const personasBarEl = document.getElementById("personas-bar");
+  const personasToggle = document.getElementById("personas-toggle");
 
   const HUMAN_NAME = "Tu";
   const USERNAME_KEY = "gcs_username";
   const CONVERSATION_KEY = "gcs_conversation_id";
+  const PERSONAS_EXPANDED_KEY = "gcs_personas_expanded";
+  let personasExpanded = localStorage.getItem(PERSONAS_EXPANDED_KEY) === "true";
   let currentConversationId = localStorage.getItem(CONVERSATION_KEY) || null;
   const nameColors = new Map();
   const palette = ["#e11d48", "#059669", "#7c3aed", "#d97706", "#0891b2", "#be123c", "#4338ca"];
@@ -421,18 +466,46 @@
     }
   }
 
-  function labelFor(name) {
+  const HUMAN_EMOJI = "🧑";
+
+  function labelFor(name, isHuman = false) {
+    if (isHuman) return `${HUMAN_EMOJI} ${name}`;
     const emoji = personaEmojis.get(name);
     return emoji ? `${emoji} ${name}` : name;
   }
 
+  function tooltipFor(p) {
+    return [p.bio, p.personality].filter(Boolean).join(" — ");
+  }
+
+  function updatePersonasToggle() {
+    const count = personas.length;
+    const arrow = personasExpanded ? "▾" : "▸";
+    personasToggle.textContent = `${count} participan${count === 1 ? "t" : "ți"} ${arrow}`;
+    personasBarEl.hidden = !personasExpanded;
+  }
+
+  personasToggle.addEventListener("click", () => {
+    personasExpanded = !personasExpanded;
+    localStorage.setItem(PERSONAS_EXPANDED_KEY, String(personasExpanded));
+    updatePersonasToggle();
+  });
+
   function renderPersonasBar() {
-    const bar = document.getElementById("personas-bar");
+    const bar = personasBarEl;
     bar.innerHTML = "";
     for (const p of personas) {
       const chip = document.createElement("span");
       chip.className = "persona-chip";
-      chip.textContent = labelFor(p.name);
+      chip.appendChild(document.createTextNode(labelFor(p.name)));
+      const tooltip = tooltipFor(p);
+      if (tooltip) {
+        chip.title = tooltip;
+        const infoIcon = document.createElement("span");
+        infoIcon.className = "info-icon";
+        infoIcon.textContent = "ⓘ";
+        chip.appendChild(infoIcon);
+      }
       bar.appendChild(chip);
     }
   }
@@ -467,6 +540,31 @@
     return date.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" });
   }
 
+  const PROMPT_SUGGESTIONS = [
+    { label: "Întreabă grupul unde mergem în vacanță", message: "Unde mergem anul ăsta în vacanță?" },
+    { label: "Cere-le părerea despre ce să gătești diseară", message: "Ce ar trebui să gătesc diseară?" },
+    { label: "Întreabă-i ce cred despre ultimele știri", message: "Ați văzut ultimele știri? Ce părere aveți?" },
+    { label: "Provoacă-i cu o dilemă", message: "Ce preferați: la munte sau la mare?" },
+  ];
+
+  function renderPromptSuggestions(container) {
+    const wrap = document.createElement("div");
+    wrap.id = "prompt-suggestions";
+    for (const suggestion of PROMPT_SUGGESTIONS) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "suggestion-chip";
+      chip.textContent = suggestion.label;
+      chip.addEventListener("click", () => {
+        inputEl.value = suggestion.message;
+        autoGrow();
+        inputEl.focus();
+      });
+      wrap.appendChild(chip);
+    }
+    container.appendChild(wrap);
+  }
+
   function render(messages) {
     const shouldStickToBottom = forceScrollToBottom || isNearBottom();
     forceScrollToBottom = false;
@@ -475,7 +573,10 @@
     if (messages.length === 0) {
       const empty = document.createElement("div");
       empty.id = "empty-state";
-      empty.textContent = "Niciun mesaj încă — scrie primul mesaj mai jos.";
+      const text = document.createElement("p");
+      text.textContent = "Niciun mesaj încă — scrie primul mesaj mai jos, sau încearcă:";
+      empty.appendChild(text);
+      renderPromptSuggestions(empty);
       messagesEl.appendChild(empty);
       scrollBottomButton.hidden = true;
       lastMessageCount = 0;
@@ -497,7 +598,7 @@
 
       const nameEl = document.createElement("span");
       nameEl.className = "name";
-      nameEl.textContent = labelFor(msg.name);
+      nameEl.textContent = labelFor(msg.name, msg.name === me);
       if (msg.name === me) {
         nameEl.style.color = "var(--accent-primary)";
       } else {
@@ -770,16 +871,25 @@
     // puțin 300ms ca userul să apuce să vadă feedback-ul vizual
     const minVisible = new Promise((resolve) => setTimeout(resolve, 300));
     const sendWork = (async () => {
-      await fetch(`/conversations/${currentConversationId}/chat`, {
+      const response = await fetch(`/conversations/${currentConversationId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, name: usernameInput.value.trim() }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await loadConversations();
     })();
     try {
       await Promise.all([sendWork, minVisible]);
       poll();
+    } catch (err) {
+      // trimiterea a eșuat (server jos, rețea etc.) — punem mesajul înapoi,
+      // ca userul să nu-l piardă, doar dacă n-a apucat între timp să scrie altceva
+      if (!inputEl.value) {
+        inputEl.value = message;
+        autoGrow();
+      }
+      statusEl.textContent = "Nu am putut trimite mesajul — încearcă din nou.";
     } finally {
       submitButton.disabled = false;
       inputEl.focus();
@@ -789,6 +899,7 @@
   async function init() {
     await loadPersonas();
     renderPersonasBar();
+    updatePersonasToggle();
     await loadConversations();
     await poll();
     setInterval(poll, 1500);

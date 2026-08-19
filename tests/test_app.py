@@ -214,8 +214,22 @@ def test_personas_endpoint_returns_name_and_emoji(tmp_path):
 
     assert response.status_code == 200
     assert response.json() == [
-        {"id": "a-role", "name": "A", "emoji": "🅰️", "color": ""},
-        {"id": "b-role", "name": "B", "emoji": "🅱️", "color": ""},
+        {
+            "id": "a-role",
+            "name": "A",
+            "emoji": "🅰️",
+            "color": "",
+            "bio": "testează lucruri",
+            "personality": "haios",
+        },
+        {
+            "id": "b-role",
+            "name": "B",
+            "emoji": "🅱️",
+            "color": "",
+            "bio": "verifică coduri",
+            "personality": "serios",
+        },
     ]
 
 

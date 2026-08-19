@@ -136,7 +136,14 @@ def create_app(
     @app.get("/personas")
     def get_personas():
         return [
-            {"id": p.get("id", ""), "name": p["name"], "emoji": p.get("emoji", ""), "color": p.get("color", "")}
+            {
+                "id": p.get("id", ""),
+                "name": p["name"],
+                "emoji": p.get("emoji", ""),
+                "color": p.get("color", ""),
+                "bio": p.get("bio", ""),
+                "personality": p.get("personality", ""),
+            }
             for p in state["personas"]
         ]
 
