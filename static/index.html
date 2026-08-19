@@ -133,10 +133,10 @@
     background-size: 0.85rem;
   }
   #messages-wrap { position: relative; margin-bottom: 0.75rem; }
+  #messages-wrap.has-scroll-button { margin-bottom: 2.5rem; }
   #messages {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
     min-height: 320px;
     max-height: 60vh;
     overflow-y: auto;
@@ -147,7 +147,8 @@
   }
   #scroll-bottom-button {
     position: absolute;
-    bottom: 0.75rem;
+    top: 100%;
+    margin-top: 0.5rem;
     left: 50%;
     transform: translateX(-50%);
     padding: 0.35rem 0.9rem;
@@ -156,7 +157,7 @@
     box-shadow: 0 2px 8px var(--shadow-color);
   }
   .message {
-    max-width: 80%;
+    max-width: 72%;
     padding: 0.5rem 0.75rem;
     border-radius: 10px;
     background: var(--bg-message-other);
@@ -179,7 +180,8 @@
     }
   }
   .message .time { font-size: 0.7rem; color: var(--text-muted); }
-  .message .content { white-space: pre-wrap; word-break: break-word; }
+  .message .time-self { text-align: right; margin-top: 0.2rem; }
+  .message .content { white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
   #empty-state {
     text-align: center;
     color: var(--text-faint);
@@ -239,7 +241,7 @@
     background: var(--bg-surface);
     color: var(--text-primary);
   }
-  #message-input::placeholder { color: var(--text-muted); }
+  #message-input::placeholder { color: var(--text-muted); font-size: 0.85rem; }
   @media (prefers-color-scheme: dark) {
     /* placeholder-ul implicit al browserului iese prea subțire/estompat pe
        fundal întunecat — îl îngroșăm ca să se citească mai clar */
@@ -295,7 +297,7 @@
 </head>
 <body>
   <h1>Group Chat Simulator</h1>
-  <button type="button" id="personas-toggle" class="secondary"></button>
+  <button type="button" id="personas-toggle" class="secondary" aria-controls="personas-bar" aria-expanded="false"></button>
   <div id="personas-bar" hidden></div>
   <div id="conversation-bar">
     <select id="conversation-select"></select>
@@ -313,13 +315,14 @@
   <form id="chat-form">
     <div id="input-wrap">
       <div id="mention-list" hidden></div>
-      <textarea id="message-input" placeholder="Scrie un mesaj... @nume pentru a menționa pe cineva anume" autocomplete="off" rows="1" autofocus></textarea>
+      <textarea id="message-input" placeholder="Scrie un mesaj..." autocomplete="off" rows="1" autofocus></textarea>
     </div>
     <button type="submit" id="send-button">Trimite</button>
   </form>
   <div id="status" role="status" aria-live="polite"></div>
 
 <script>
+  const messagesWrapEl = document.getElementById("messages-wrap");
   const messagesEl = document.getElementById("messages");
   const formEl = document.getElementById("chat-form");
   const inputEl = document.getElementById("message-input");
@@ -347,6 +350,8 @@
   let typingName = null;
   let forceScrollToBottom = false;
   let lastMessageCount = 0;
+  let prevMessages = [];
+  let lastRenderedMe = null;
   let mentionStart = -1;
   let mentionMatches = [];
   let mentionActiveIndex = -1;
@@ -404,7 +409,20 @@
     mentionListEl.hidden = false;
   }
 
+  function updateInputPlaceholder() {
+    inputEl.placeholder =
+      lastMessageCount === 0
+        ? "Scrie un mesaj..."
+        : "Scrie un mesaj... @nume pentru a menționa pe cineva anume";
+  }
+
   function updateMentionAutocomplete() {
+    // mențiunile au sens doar după ce conversația a pornit deja — primul
+    // mesaj ar trebui să ajungă la tot grupul, nu țintit de la bun început
+    if (lastMessageCount === 0) {
+      hideMentionList();
+      return;
+    }
     const state = currentMentionQuery();
     if (!state) {
       hideMentionList();
@@ -481,7 +499,10 @@
   function updatePersonasToggle() {
     const count = personas.length;
     const arrow = personasExpanded ? "▾" : "▸";
-    personasToggle.textContent = `${count} participan${count === 1 ? "t" : "ți"} ${arrow}`;
+    const participanti = count === 1 ? "participant" : "participanți";
+    const actiune = personasExpanded ? "ascunde" : "vedea";
+    personasToggle.textContent = `${count} ${participanti} în grup, apasă pentru a ${actiune} ${arrow}`;
+    personasToggle.setAttribute("aria-expanded", String(personasExpanded));
     personasBarEl.hidden = !personasExpanded;
   }
 
@@ -565,45 +586,37 @@
     container.appendChild(wrap);
   }
 
-  function render(messages) {
-    const shouldStickToBottom = forceScrollToBottom || isNearBottom();
-    forceScrollToBottom = false;
-    messagesEl.innerHTML = "";
+  function setScrollButtonVisible(visible) {
+    scrollBottomButton.hidden = !visible;
+    messagesWrapEl.classList.toggle("has-scroll-button", visible);
+  }
 
-    if (messages.length === 0) {
-      const empty = document.createElement("div");
-      empty.id = "empty-state";
-      const text = document.createElement("p");
-      text.textContent = "Niciun mesaj încă — scrie primul mesaj mai jos, sau încearcă:";
-      empty.appendChild(text);
-      renderPromptSuggestions(empty);
-      messagesEl.appendChild(empty);
-      scrollBottomButton.hidden = true;
-      lastMessageCount = 0;
-      return;
-    }
+  function messagesEqual(a, b) {
+    return !!a && !!b && a.name === b.name && a.content === b.content && a.timestamp === b.timestamp;
+  }
 
-    const me = currentUsername();
-    for (const msg of messages) {
-      const div = document.createElement("div");
-      div.className = "message" + (msg.name === me ? " human" : "");
-      if (msg.name !== me) {
-        const color = colorFor(msg.name);
-        div.style.background = `color-mix(in srgb, ${color} 22%, var(--bg-message-other))`;
-        div.style.borderLeft = `3px solid ${color}`;
-      }
+  // construiește o singură bulă; sameSpeakerAsPrev e null pentru primul mesaj
+  // din listă (fără spațiere deasupra), altfel true/false după cum vorbitorul
+  // se repetă sau nu față de bula anterioară — asta dă ritmul de grupare
+  function createMessageEl(msg, me, sameSpeakerAsPrev) {
+    const isMe = msg.name === me;
+    const div = document.createElement("div");
+    div.className = "message" + (isMe ? " human" : "");
+    div.dataset.name = msg.name;
+    div.style.marginTop = sameSpeakerAsPrev === null ? "0" : sameSpeakerAsPrev ? "0.15rem" : "0.75rem";
+
+    if (!isMe) {
+      const color = colorFor(msg.name);
+      div.style.background = `color-mix(in srgb, ${color} 22%, var(--bg-message-other))`;
+      div.style.borderLeft = `3px solid ${color}`;
 
       const nameRow = document.createElement("div");
       nameRow.className = "name-row";
 
       const nameEl = document.createElement("span");
       nameEl.className = "name";
-      nameEl.textContent = labelFor(msg.name, msg.name === me);
-      if (msg.name === me) {
-        nameEl.style.color = "var(--accent-primary)";
-      } else {
-        nameEl.style.setProperty("--persona-color", colorFor(msg.name));
-      }
+      nameEl.textContent = labelFor(msg.name, false);
+      nameEl.style.setProperty("--persona-color", color);
       nameRow.appendChild(nameEl);
 
       const time = formatMessageTime(msg.timestamp);
@@ -614,21 +627,87 @@
         nameRow.appendChild(timeEl);
       }
 
-      const contentEl = document.createElement("div");
-      contentEl.className = "content";
-      renderMessageContent(contentEl, msg.content);
-
       div.appendChild(nameRow);
-      div.appendChild(contentEl);
-      messagesEl.appendChild(div);
     }
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "content";
+    renderMessageContent(contentEl, msg.content);
+    div.appendChild(contentEl);
+
+    // în chat-urile reale nu-ți vezi propriul nume — doar ora, discretă, în
+    // colțul bulei
+    if (isMe) {
+      const time = formatMessageTime(msg.timestamp);
+      if (time) {
+        const timeEl = document.createElement("div");
+        timeEl.className = "time time-self";
+        timeEl.textContent = time;
+        div.appendChild(timeEl);
+      }
+    }
+
+    return div;
+  }
+
+  function render(messages) {
+    const shouldStickToBottom = forceScrollToBottom || isNearBottom();
+    forceScrollToBottom = false;
+
+    if (messages.length === 0) {
+      messagesEl.innerHTML = "";
+      const empty = document.createElement("div");
+      empty.id = "empty-state";
+      const text = document.createElement("p");
+      text.textContent = "Niciun mesaj încă — scrie primul mesaj mai jos, sau încearcă:";
+      empty.appendChild(text);
+      renderPromptSuggestions(empty);
+      messagesEl.appendChild(empty);
+      setScrollButtonVisible(false);
+      lastMessageCount = 0;
+      prevMessages = [];
+      updateInputPlaceholder();
+      return;
+    }
+
+    const me = currentUsername();
+    // randare incrementală: dacă lista anterioară e un prefix neschimbat al
+    // celei noi, adăugăm doar mesajele noi în loc să rescriem tot DOM-ul —
+    // altfel un poll la 1.5s întrerupe orice selecție de text în curs
+    const canAppend =
+      me === lastRenderedMe &&
+      prevMessages.length > 0 &&
+      prevMessages.length <= messages.length &&
+      messagesEqual(prevMessages[prevMessages.length - 1], messages[prevMessages.length - 1]);
+
+    if (!canAppend) {
+      messagesEl.innerHTML = "";
+      let prevName = null;
+      for (const msg of messages) {
+        const sameSpeaker = prevName === null ? null : prevName === msg.name;
+        messagesEl.appendChild(createMessageEl(msg, me, sameSpeaker));
+        prevName = msg.name;
+      }
+    } else {
+      let prevName = prevMessages[prevMessages.length - 1].name;
+      for (let i = prevMessages.length; i < messages.length; i++) {
+        const msg = messages[i];
+        messagesEl.appendChild(createMessageEl(msg, me, prevName === msg.name));
+        prevName = msg.name;
+      }
+    }
+
+    prevMessages = messages;
+    lastRenderedMe = me;
+
     if (shouldStickToBottom) {
       messagesEl.scrollTop = messagesEl.scrollHeight;
-      scrollBottomButton.hidden = true;
+      setScrollButtonVisible(false);
     } else if (messages.length > lastMessageCount) {
-      scrollBottomButton.hidden = false;
+      setScrollButtonVisible(true);
     }
     lastMessageCount = messages.length;
+    updateInputPlaceholder();
   }
 
   function renderTypingBubble() {
@@ -643,6 +722,12 @@
     const typingColor = colorFor(typingName);
     div.style.background = `color-mix(in srgb, ${typingColor} 22%, var(--bg-message-other))`;
     div.style.borderLeft = `3px solid ${typingColor}`;
+    const lastMessageEl = messagesEl.querySelector(".message:last-child");
+    div.style.marginTop = lastMessageEl
+      ? lastMessageEl.dataset.name === typingName
+        ? "0.15rem"
+        : "0.75rem"
+      : "0";
 
     const nameEl = document.createElement("div");
     nameEl.className = "name";
@@ -729,11 +814,11 @@
 
   scrollBottomButton.addEventListener("click", () => {
     messagesEl.scrollTop = messagesEl.scrollHeight;
-    scrollBottomButton.hidden = true;
+    setScrollButtonVisible(false);
   });
 
   messagesEl.addEventListener("scroll", () => {
-    if (isNearBottom()) scrollBottomButton.hidden = true;
+    if (isNearBottom()) setScrollButtonVisible(false);
   });
 
   function clearDraftInput() {
@@ -750,12 +835,13 @@
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
     typingName = null;
     forceScrollToBottom = true;
+    prevMessages = [];
     resetDeleteConfirm();
     clearDraftInput();
     poll();
   });
 
-  newConversationButton.addEventListener("click", async () => {
+  async function switchToEmptyConversation() {
     // dacă există deja o conversație goală, o refolosim în loc să mai creăm una
     const existing = await (await fetch("/conversations")).json();
     const emptyConversation = existing.find((c) => c.message_count === 0);
@@ -768,9 +854,14 @@
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
     typingName = null;
     forceScrollToBottom = true;
+    prevMessages = [];
     clearDraftInput();
     await loadConversations();
     poll();
+  }
+
+  newConversationButton.addEventListener("click", async () => {
+    await switchToEmptyConversation();
   });
 
   let deleteConfirmTimeout = null;
@@ -799,11 +890,7 @@
 
     await fetch(`/conversations/${currentConversationId}`, { method: "DELETE" });
     currentConversationId = null;
-    typingName = null;
-    forceScrollToBottom = true;
-    clearDraftInput();
-    await loadConversations();
-    poll();
+    await switchToEmptyConversation();
   });
 
   function autoGrow() {
