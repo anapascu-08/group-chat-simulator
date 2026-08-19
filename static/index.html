@@ -146,6 +146,10 @@
     font-size: 0.9rem;
   }
   .mention-item.active, .mention-item:hover { background: #eef2ff; }
+  .mention-tag {
+    font-weight: 600;
+    color: #4338ca;
+  }
   button {
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -292,6 +296,36 @@
     autoGrow();
   }
 
+  const MESSAGE_MENTION_RE = /@([\p{L}\p{N}_]+)/gu;
+
+  // găsește persona a cărei mențiune "lipită" (@NumeFaraSpatiu) corespunde tokenului
+  function personaForMentionToken(token) {
+    const folded = fold(token);
+    return personas.find((p) => mentionTokens(p.name).includes(folded));
+  }
+
+  // afișează @NumeFaraSpatiu ca "@Nume Cu Spații", evidențiat, fără să schimbe textul salvat
+  function renderMessageContent(el, text) {
+    el.textContent = "";
+    let lastIndex = 0;
+    for (const match of text.matchAll(MESSAGE_MENTION_RE)) {
+      const persona = personaForMentionToken(match[1]);
+      if (!persona) continue;
+      const start = match.index;
+      if (start > lastIndex) {
+        el.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+      }
+      const tag = document.createElement("span");
+      tag.className = "mention-tag";
+      tag.textContent = `@${persona.name}`;
+      el.appendChild(tag);
+      lastIndex = start + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      el.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+  }
+
   function labelFor(name) {
     const emoji = personaEmojis.get(name);
     return emoji ? `${emoji} ${name}` : name;
@@ -351,7 +385,7 @@
 
       const contentEl = document.createElement("div");
       contentEl.className = "content";
-      contentEl.textContent = msg.content;
+      renderMessageContent(contentEl, msg.content);
 
       div.appendChild(nameEl);
       div.appendChild(contentEl);
