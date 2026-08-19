@@ -67,6 +67,7 @@
     background-position: right 0.5rem center;
     background-size: 0.85rem;
   }
+  #messages-wrap { position: relative; margin-bottom: 0.75rem; }
   #messages {
     display: flex;
     flex-direction: column;
@@ -78,7 +79,16 @@
     background: #e2e2e8;
     border-radius: 8px;
     border: 1px solid #ccc;
-    margin-bottom: 0.75rem;
+  }
+  #scroll-bottom-button {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
   .message {
     max-width: 80%;
@@ -116,7 +126,7 @@
     0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
     30% { transform: translateY(-4px); opacity: 1; }
   }
-  form { display: flex; gap: 0.5rem; align-items: flex-start; }
+  form { display: flex; gap: 0.5rem; align-items: center; }
   input[type="text"] {
     flex: 1;
     padding: 0.5rem;
@@ -169,8 +179,10 @@
     color: white;
     cursor: pointer;
     font-size: 1rem;
+    line-height: 1.4;
   }
   button.secondary { background: #999; }
+  button:disabled { opacity: 0.6; cursor: default; }
   #new-conversation-button { background: #059669; }
   #delete-conversation-button { background: #dc2626; }
   #status { font-size: 0.8rem; color: #666; min-height: 1.2em; margin-top: 0.35rem; }
@@ -188,13 +200,16 @@
     <label for="username-input">Numele tău:</label>
     <input type="text" id="username-input" placeholder="Tu" autocomplete="off" />
   </div>
-  <div id="messages"></div>
+  <div id="messages-wrap">
+    <div id="messages"></div>
+    <button type="button" id="scroll-bottom-button" hidden>↓ Mesaje noi</button>
+  </div>
   <form id="chat-form">
     <div id="input-wrap">
       <div id="mention-list" hidden></div>
       <textarea id="message-input" placeholder="Scrie un mesaj... @nume pentru a menționa pe cineva anume" autocomplete="off" rows="1"></textarea>
     </div>
-    <button type="submit">Trimite</button>
+    <button type="submit" id="send-button">Trimite</button>
   </form>
   <div id="status"></div>
 
@@ -208,6 +223,8 @@
   const newConversationButton = document.getElementById("new-conversation-button");
   const deleteConversationButton = document.getElementById("delete-conversation-button");
   const mentionListEl = document.getElementById("mention-list");
+  const scrollBottomButton = document.getElementById("scroll-bottom-button");
+  const submitButton = document.getElementById("send-button");
 
   const HUMAN_NAME = "Tu";
   const USERNAME_KEY = "gcs_username";
@@ -219,6 +236,7 @@
   let personas = [];
   let typingName = null;
   let forceScrollToBottom = false;
+  let lastMessageCount = 0;
   let mentionStart = -1;
   let mentionMatches = [];
   let mentionActiveIndex = -1;
@@ -394,6 +412,8 @@
       empty.id = "empty-state";
       empty.textContent = "Niciun mesaj încă — scrie primul mesaj mai jos.";
       messagesEl.appendChild(empty);
+      scrollBottomButton.hidden = true;
+      lastMessageCount = 0;
       return;
     }
 
@@ -434,7 +454,11 @@
     }
     if (shouldStickToBottom) {
       messagesEl.scrollTop = messagesEl.scrollHeight;
+      scrollBottomButton.hidden = true;
+    } else if (messages.length > lastMessageCount) {
+      scrollBottomButton.hidden = false;
     }
+    lastMessageCount = messages.length;
   }
 
   function renderTypingBubble() {
@@ -533,6 +557,15 @@
     await fetchTyping();
   }
 
+  scrollBottomButton.addEventListener("click", () => {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    scrollBottomButton.hidden = true;
+  });
+
+  messagesEl.addEventListener("scroll", () => {
+    if (isNearBottom()) scrollBottomButton.hidden = true;
+  });
+
   conversationSelect.addEventListener("change", () => {
     currentConversationId = conversationSelect.value;
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
@@ -542,9 +575,15 @@
   });
 
   newConversationButton.addEventListener("click", async () => {
-    const response = await fetch("/conversations", { method: "POST" });
-    const conversation = await response.json();
-    currentConversationId = conversation.id;
+    // dacă există deja o conversație goală, o refolosim în loc să mai creăm una
+    const existing = await (await fetch("/conversations")).json();
+    const emptyConversation = existing.find((c) => c.message_count === 0);
+    if (emptyConversation) {
+      currentConversationId = emptyConversation.id;
+    } else {
+      const created = await (await fetch("/conversations", { method: "POST" })).json();
+      currentConversationId = created.id;
+    }
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
     typingName = null;
     forceScrollToBottom = true;
@@ -622,13 +661,24 @@
     autoGrow();
     hideMentionList();
     statusEl.textContent = "Personas scriu...";
-    await fetch(`/conversations/${currentConversationId}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, name: usernameInput.value.trim() }),
-    });
-    await loadConversations();
-    poll();
+    submitButton.disabled = true;
+    // cererea locală răspunde aproape instant — ținem butonul dezactivat cel
+    // puțin 300ms ca userul să apuce să vadă feedback-ul vizual
+    const minVisible = new Promise((resolve) => setTimeout(resolve, 300));
+    const sendWork = (async () => {
+      await fetch(`/conversations/${currentConversationId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, name: usernameInput.value.trim() }),
+      });
+      await loadConversations();
+    })();
+    try {
+      await Promise.all([sendWork, minVisible]);
+      poll();
+    } finally {
+      submitButton.disabled = false;
+    }
   });
 
   async function init() {

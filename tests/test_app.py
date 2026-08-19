@@ -46,6 +46,14 @@ def first_conversation_id(client):
     return client.get("/conversations").json()[0]["id"]
 
 
+def test_responses_are_not_cached_by_the_browser(tmp_path):
+    """index.html se editează des în dezvoltare — fără acest header,
+    browserul poate servi o versiune veche din cache."""
+    client = make_client(tmp_path=tmp_path)
+    response = client.get("/")
+    assert response.headers["cache-control"] == "no-store"
+
+
 def test_a_conversation_exists_on_startup(tmp_path):
     client = make_client(tmp_path=tmp_path)
     conversations = client.get("/conversations").json()

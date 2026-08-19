@@ -35,6 +35,15 @@ def create_app(
     rng: Callable = random.random,
 ) -> FastAPI:
     app = FastAPI(title="Group Chat Simulator")
+
+    @app.middleware("http")
+    async def no_cache_headers(request, call_next):
+        # aplicație de dezvoltare cu index.html editat frecvent — fără asta,
+        # browserul poate servi din cache o versiune veche a paginii
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     store = ConversationStore(conversations_dir)
     conversations: dict[str, Conversation] = {}
     state = {

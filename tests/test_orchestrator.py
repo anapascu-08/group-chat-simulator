@@ -97,6 +97,42 @@ def test_respond_as_retries_once_when_reply_is_empty():
     assert len(calls) == 2
 
 
+def test_respond_as_falls_back_when_generate_response_always_raises():
+    """Dacă Ollama nu răspunde (ex. serviciul e oprit), respond_as nu trebuie
+    să propage excepția — altfel indicatorul "X scrie..." rămâne blocat
+    pentru totdeauna, fiindcă linia care îl resetează în app.py nu se mai
+    execută."""
+    conv = Conversation()
+    conv.add_message("Tu", "Salut!")
+    persona = {"name": "A", "system_prompt": "sp", "temperature": 0.5}
+
+    def broken_generate(system_prompt, messages, temperature):
+        raise ConnectionError("Ollama nu răspunde")
+
+    reply = respond_as(conv, persona, generate_response=broken_generate)
+
+    assert reply == FALLBACK_REPLY
+    assert conv.get_history()[-1]["content"] == FALLBACK_REPLY
+
+
+def test_respond_as_retries_after_a_transient_exception():
+    conv = Conversation()
+    conv.add_message("Tu", "Salut!")
+    persona = {"name": "A", "system_prompt": "sp", "temperature": 0.5}
+    calls = []
+
+    def flaky_generate(system_prompt, messages, temperature):
+        calls.append(1)
+        if len(calls) == 1:
+            raise ConnectionError("timeout trecător")
+        return "Salut și eu!"
+
+    reply = respond_as(conv, persona, generate_response=flaky_generate)
+
+    assert reply == "Salut și eu!"
+    assert len(calls) == 2
+
+
 def test_respond_as_falls_back_when_still_empty_after_retry():
     conv = Conversation()
     conv.add_message("Tu", "Salut!")

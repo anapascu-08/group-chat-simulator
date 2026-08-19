@@ -69,8 +69,14 @@ def respond_as(
     reply = ""
     for _ in range(MAX_ATTEMPTS):
         # modelele mici generează ocazional un răspuns gol; reîncercăm de câteva
-        # ori, fiindcă generarea e non-deterministă (temperature > 0)
-        reply = _generate_and_humanize(generate_response, system_prompt, messages, persona["temperature"])
+        # ori, fiindcă generarea e non-deterministă (temperature > 0). Dacă
+        # generate_response eșuează (ex. Ollama e oprit), tratăm la fel ca un
+        # răspuns gol — altfel excepția ar bloca indicatorul "X scrie..." în
+        # app.py, fiindcă linia care îl resetează nu s-ar mai executa.
+        try:
+            reply = _generate_and_humanize(generate_response, system_prompt, messages, persona["temperature"])
+        except Exception:
+            reply = ""
         if reply:
             break
     if not reply:
