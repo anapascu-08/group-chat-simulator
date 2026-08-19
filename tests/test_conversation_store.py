@@ -48,9 +48,20 @@ def test_append_message_persists_it(tmp_path):
     store = ConversationStore(tmp_path)
     data = store.create()
 
+    store.append_message(data["id"], "Tu", "Salut!", timestamp="2024-01-01T10:00:00+00:00")
+
+    assert store.load_messages(data["id"]) == [
+        {"name": "Tu", "content": "Salut!", "timestamp": "2024-01-01T10:00:00+00:00"}
+    ]
+
+
+def test_append_message_generates_a_timestamp_when_not_given(tmp_path):
+    store = ConversationStore(tmp_path)
+    data = store.create()
+
     store.append_message(data["id"], "Tu", "Salut!")
 
-    assert store.load_messages(data["id"]) == [{"name": "Tu", "content": "Salut!"}]
+    assert store.load_messages(data["id"])[0]["timestamp"]
 
 
 def test_list_title_uses_first_non_empty_message(tmp_path):

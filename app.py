@@ -64,9 +64,10 @@ def create_app(
                 state["typing"][conversation_id] = None
                 return  # a venit un mesaj nou/reset între timp, runda asta nu mai e validă
             state["typing"][conversation_id] = persona["name"]
-            reply = respond_as(conversation, persona, target_message=target_message, generate_response=generate_response)
+            respond_as(conversation, persona, target_message=target_message, generate_response=generate_response)
             state["typing"][conversation_id] = None
-            store.append_message(conversation_id, persona["name"], reply)
+            last = conversation.get_history()[-1]
+            store.append_message(conversation_id, last["name"], last["content"], timestamp=last["timestamp"])
 
     @app.get("/conversations")
     def list_conversations():
@@ -91,7 +92,8 @@ def create_app(
         conversation = get_conversation(conversation_id)
         sender = payload.name.strip() if payload.name and payload.name.strip() else HUMAN_NAME
         conversation.add_message(sender, payload.message)
-        store.append_message(conversation_id, sender, payload.message)
+        timestamp = conversation.get_history()[-1]["timestamp"]
+        store.append_message(conversation_id, sender, payload.message, timestamp=timestamp)
 
         round_id = state["round_ids"].get(conversation_id, 0) + 1
         state["round_ids"][conversation_id] = round_id

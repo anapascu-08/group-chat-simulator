@@ -10,7 +10,10 @@ def test_respond_as_adds_reply_to_conversation():
     reply = respond_as(conv, persona, generate_response=lambda **kwargs: "Bună, mă!")
 
     assert reply == "Bună, mă!"
-    assert conv.get_history()[-1] == {"name": "Nea Fănică", "content": "Bună, mă!"}
+    last = conv.get_history()[-1]
+    assert last["name"] == "Nea Fănică"
+    assert last["content"] == "Bună, mă!"
+    assert last["timestamp"]
 
 
 def test_respond_as_passes_persona_system_prompt_and_temperature():

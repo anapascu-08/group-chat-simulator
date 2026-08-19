@@ -5,7 +5,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 DEFAULT_DIR = "conversations"
 TITLE_MAX_LEN = 40
@@ -41,9 +41,13 @@ class ConversationStore:
     def exists(self, conversation_id: str) -> bool:
         return self._path(conversation_id).exists()
 
-    def append_message(self, conversation_id: str, name: str, content: str) -> None:
+    def append_message(
+        self, conversation_id: str, name: str, content: str, timestamp: Optional[str] = None
+    ) -> None:
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc).isoformat()
         data = self._read(conversation_id)
-        data["messages"].append({"name": name, "content": content})
+        data["messages"].append({"name": name, "content": content, "timestamp": timestamp})
         self._write(data)
 
     def reset(self, conversation_id: str) -> None:

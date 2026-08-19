@@ -1,12 +1,17 @@
 """Istoric de conversație în memorie, pentru un singur grup chat."""
 
+from datetime import datetime, timezone
+from typing import Optional
+
 
 class Conversation:
     def __init__(self, history: list = None):
         self._history = list(history) if history else []
 
-    def add_message(self, name: str, content: str) -> None:
-        self._history.append({"name": name, "content": content})
+    def add_message(self, name: str, content: str, timestamp: Optional[str] = None) -> None:
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc).isoformat()
+        self._history.append({"name": name, "content": content, "timestamp": timestamp})
 
     def get_history(self) -> list[dict]:
         return list(self._history)

@@ -8,8 +8,16 @@ def test_starts_empty():
 
 def test_add_message_appends_to_history():
     conv = Conversation()
+    conv.add_message("Tu", "Salut!", timestamp="2024-01-01T10:00:00+00:00")
+    assert conv.get_history() == [
+        {"name": "Tu", "content": "Salut!", "timestamp": "2024-01-01T10:00:00+00:00"}
+    ]
+
+
+def test_add_message_generates_a_timestamp_when_not_given():
+    conv = Conversation()
     conv.add_message("Tu", "Salut!")
-    assert conv.get_history() == [{"name": "Tu", "content": "Salut!"}]
+    assert conv.get_history()[0]["timestamp"]
 
 
 def test_reset_clears_history():

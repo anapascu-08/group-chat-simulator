@@ -69,7 +69,9 @@ def test_chat_adds_human_message(tmp_path):
     client.post(f"/conversations/{conversation_id}/chat", json={"message": "Salut tuturor!"})
 
     messages = client.get(f"/conversations/{conversation_id}/messages").json()
-    assert messages[0] == {"name": "Tu", "content": "Salut tuturor!"}
+    assert messages[0]["name"] == "Tu"
+    assert messages[0]["content"] == "Salut tuturor!"
+    assert messages[0]["timestamp"]
 
 
 def test_chat_triggers_replies_from_all_personas_in_order(tmp_path):
@@ -88,7 +90,8 @@ def test_chat_uses_provided_name(tmp_path):
     client.post(f"/conversations/{conversation_id}/chat", json={"message": "Salut!", "name": "Ana"})
 
     messages = client.get(f"/conversations/{conversation_id}/messages").json()
-    assert messages[0] == {"name": "Ana", "content": "Salut!"}
+    assert messages[0]["name"] == "Ana"
+    assert messages[0]["content"] == "Salut!"
 
 
 def test_chat_falls_back_to_default_name_when_missing(tmp_path):
@@ -107,6 +110,19 @@ def test_chat_falls_back_to_default_name_when_blank(tmp_path):
 
     messages = client.get(f"/conversations/{conversation_id}/messages").json()
     assert messages[0]["name"] == "Tu"
+
+
+def test_chat_message_timestamp_survives_a_restart(tmp_path):
+    client = make_client(tmp_path=tmp_path)
+    conversation_id = first_conversation_id(client)
+    client.post(f"/conversations/{conversation_id}/chat", json={"message": "Salut!"})
+
+    before_restart = client.get(f"/conversations/{conversation_id}/messages").json()
+
+    restarted_client = make_client(tmp_path=tmp_path)
+    after_restart = restarted_client.get(f"/conversations/{conversation_id}/messages").json()
+
+    assert after_restart[0]["timestamp"] == before_restart[0]["timestamp"]
 
 
 def test_reset_clears_history(tmp_path):
