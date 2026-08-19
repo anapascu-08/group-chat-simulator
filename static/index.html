@@ -5,14 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Group Chat Simulator</title>
 <style>
+  :root {
+    --bg-page: #dcdce3;
+    --text-primary: #1a1a1a;
+    --text-muted: #666;
+    --text-faint: #888;
+    --bg-surface: #f0f0f4;
+    --bg-messages: #e2e2e8;
+    --bg-message-other: #d3d3da;
+    --bg-message-human: #bfd9fb;
+    --border-color: #ccc;
+    --border-color-light: #ddd;
+    --accent-primary: #2563eb;
+    --accent-secondary: #999;
+    --accent-success: #059669;
+    --accent-danger: #dc2626;
+    --accent-mention: #4338ca;
+    --mention-hover-bg: #eef2ff;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-page: #1a1a1f;
+      --text-primary: #e8e8ec;
+      --text-muted: #9a9aa4;
+      --text-faint: #78787f;
+      --bg-surface: #2a2a30;
+      --bg-messages: #202024;
+      --bg-message-other: #33333a;
+      --bg-message-human: #2c4a6e;
+      --border-color: #45454d;
+      --border-color-light: #3a3a42;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #6b6b74;
+      --accent-success: #10b981;
+      --accent-danger: #ef4444;
+      --accent-mention: #818cf8;
+      --mention-hover-bg: #2c2c55;
+      --shadow-color: rgba(0, 0, 0, 0.5);
+    }
+    #conversation-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23aaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
+    }
+  }
   * { box-sizing: border-box; }
   body {
     font-family: system-ui, -apple-system, sans-serif;
     max-width: 640px;
     margin: 0 auto;
     padding: 1rem;
-    background: #dcdce3;
-    color: #1a1a1a;
+    background: var(--bg-page);
+    color: var(--text-primary);
   }
   h1 { font-size: 1.25rem; }
   #username-bar {
@@ -25,10 +68,11 @@
   #username-input {
     padding: 0.3rem 0.5rem;
     border-radius: 6px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     font-size: 0.9rem;
     width: 140px;
-    background: #f0f0f4;
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
   #personas-bar {
     display: flex;
@@ -41,8 +85,8 @@
     align-items: center;
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
-    background: #f0f0f4;
-    border: 1px solid #ddd;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color-light);
     font-size: 0.8rem;
     white-space: nowrap;
   }
@@ -57,9 +101,10 @@
     min-width: 0;
     padding: 0.35rem 1.75rem 0.35rem 0.5rem;
     border-radius: 6px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     font-size: 0.85rem;
-    background-color: #f0f0f4;
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
     appearance: none;
     -webkit-appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
@@ -76,9 +121,9 @@
     max-height: 60vh;
     overflow-y: auto;
     padding: 0.75rem;
-    background: #e2e2e8;
+    background: var(--bg-messages);
     border-radius: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
   }
   #scroll-bottom-button {
     position: absolute;
@@ -88,27 +133,27 @@
     padding: 0.35rem 0.9rem;
     border-radius: 999px;
     font-size: 0.8rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px var(--shadow-color);
   }
   .message {
     max-width: 80%;
     padding: 0.5rem 0.75rem;
     border-radius: 10px;
-    background: #d3d3da;
+    background: var(--bg-message-other);
     border-left: 3px solid transparent;
     align-self: flex-start;
   }
-  .message.human { align-self: flex-end; background: #bfd9fb; }
+  .message.human { align-self: flex-end; background: var(--bg-message-human); }
   .message .name-row { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.15rem; }
   .message .name { font-weight: 600; font-size: 0.8rem; }
-  .message .time { font-size: 0.7rem; color: #666; }
+  .message .time { font-size: 0.7rem; color: var(--text-muted); }
   .message .content { white-space: pre-wrap; word-break: break-word; }
   #empty-state {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #888;
+    color: var(--text-faint);
     font-size: 0.9rem;
     text-align: center;
   }
@@ -117,7 +162,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #999;
+    background: var(--accent-secondary);
     animation: typing-bounce 1.2s infinite ease-in-out;
   }
   .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
@@ -131,7 +176,7 @@
     flex: 1;
     padding: 0.5rem;
     border-radius: 6px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     font-size: 1rem;
   }
   #input-wrap { position: relative; flex: 1; }
@@ -139,13 +184,14 @@
     width: 100%;
     padding: 0.5rem;
     border-radius: 6px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     font-size: 1rem;
     font-family: inherit;
     resize: none;
     max-height: 8rem;
     line-height: 1.4;
-    background: #f0f0f4;
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
   #mention-list {
     position: absolute;
@@ -155,10 +201,10 @@
     width: 100%;
     max-height: 180px;
     overflow-y: auto;
-    background: #f0f0f4;
-    border: 1px solid #ccc;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 10px var(--shadow-color);
     z-index: 10;
   }
   .mention-item {
@@ -166,26 +212,26 @@
     cursor: pointer;
     font-size: 0.9rem;
   }
-  .mention-item.active, .mention-item:hover { background: #eef2ff; }
+  .mention-item.active, .mention-item:hover { background: var(--mention-hover-bg); }
   .mention-tag {
     font-weight: 600;
-    color: #4338ca;
+    color: var(--accent-mention);
   }
   button {
     padding: 0.5rem 1rem;
     border-radius: 6px;
     border: none;
-    background: #2563eb;
+    background: var(--accent-primary);
     color: white;
     cursor: pointer;
     font-size: 1rem;
     line-height: 1.4;
   }
-  button.secondary { background: #999; }
+  button.secondary { background: var(--accent-secondary); }
   button:disabled { opacity: 0.6; cursor: default; }
-  #new-conversation-button { background: #059669; }
-  #delete-conversation-button { background: #dc2626; }
-  #status { font-size: 0.8rem; color: #666; min-height: 1.2em; margin-top: 0.35rem; }
+  #new-conversation-button { background: var(--accent-success); }
+  #delete-conversation-button { background: var(--accent-danger); }
+  #status { font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; margin-top: 0.35rem; }
 </style>
 </head>
 <body>
@@ -423,7 +469,7 @@
       div.className = "message" + (msg.name === me ? " human" : "");
       if (msg.name !== me) {
         const color = colorFor(msg.name);
-        div.style.background = `color-mix(in srgb, ${color} 22%, #d3d3da)`;
+        div.style.background = `color-mix(in srgb, ${color} 22%, var(--bg-message-other))`;
         div.style.borderLeft = `3px solid ${color}`;
       }
 
@@ -433,7 +479,7 @@
       const nameEl = document.createElement("span");
       nameEl.className = "name";
       nameEl.textContent = labelFor(msg.name);
-      nameEl.style.color = msg.name === me ? "#1d4ed8" : colorFor(msg.name);
+      nameEl.style.color = msg.name === me ? "var(--accent-primary)" : colorFor(msg.name);
       nameRow.appendChild(nameEl);
 
       const time = formatMessageTime(msg.timestamp);
@@ -471,7 +517,7 @@
     div.id = "typing-bubble";
     div.className = "message";
     const typingColor = colorFor(typingName);
-    div.style.background = `color-mix(in srgb, ${typingColor} 22%, #d3d3da)`;
+    div.style.background = `color-mix(in srgb, ${typingColor} 22%, var(--bg-message-other))`;
     div.style.borderLeft = `3px solid ${typingColor}`;
 
     const nameEl = document.createElement("div");
