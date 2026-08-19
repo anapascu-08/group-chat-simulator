@@ -145,7 +145,19 @@
   }
   .message.human { align-self: flex-end; background: var(--bg-message-human); }
   .message .name-row { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.15rem; }
-  .message .name { font-weight: 600; font-size: 0.8rem; }
+  .message .name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--persona-color, var(--accent-primary));
+  }
+  @media (prefers-color-scheme: dark) {
+    /* culorile fixe per-persona (din personas.json) sunt gândite pentru fundal
+       deschis — pe fundal întunecat, unele (ex. bleumarin închis) devin
+       aproape ilizibile, așa că le deschidem amestecându-le cu alb */
+    .message .name {
+      color: color-mix(in srgb, var(--persona-color, var(--accent-primary)) 50%, white);
+    }
+  }
   .message .time { font-size: 0.7rem; color: var(--text-muted); }
   .message .content { white-space: pre-wrap; word-break: break-word; }
   #empty-state {
@@ -231,6 +243,13 @@
   button:disabled { opacity: 0.6; cursor: default; }
   #new-conversation-button { background: var(--accent-success); }
   #delete-conversation-button { background: var(--accent-danger); }
+  #delete-conversation-button.confirming {
+    animation: confirm-pulse 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes confirm-pulse {
+    from { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+    to { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+  }
   #status { font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; margin-top: 0.35rem; }
 </style>
 </head>
@@ -253,7 +272,7 @@
   <form id="chat-form">
     <div id="input-wrap">
       <div id="mention-list" hidden></div>
-      <textarea id="message-input" placeholder="Scrie un mesaj... @nume pentru a menționa pe cineva anume" autocomplete="off" rows="1"></textarea>
+      <textarea id="message-input" placeholder="Scrie un mesaj... @nume pentru a menționa pe cineva anume" autocomplete="off" rows="1" autofocus></textarea>
     </div>
     <button type="submit" id="send-button">Trimite</button>
   </form>
@@ -479,7 +498,11 @@
       const nameEl = document.createElement("span");
       nameEl.className = "name";
       nameEl.textContent = labelFor(msg.name);
-      nameEl.style.color = msg.name === me ? "var(--accent-primary)" : colorFor(msg.name);
+      if (msg.name === me) {
+        nameEl.style.color = "var(--accent-primary)";
+      } else {
+        nameEl.style.setProperty("--persona-color", colorFor(msg.name));
+      }
       nameRow.appendChild(nameEl);
 
       const time = formatMessageTime(msg.timestamp);
@@ -523,7 +546,7 @@
     const nameEl = document.createElement("div");
     nameEl.className = "name";
     nameEl.textContent = labelFor(typingName);
-    nameEl.style.color = colorFor(typingName);
+    nameEl.style.setProperty("--persona-color", typingColor);
 
     const dots = document.createElement("div");
     dots.className = "typing-dots";
@@ -612,11 +635,22 @@
     if (isNearBottom()) scrollBottomButton.hidden = true;
   });
 
+  function clearDraftInput() {
+    // mesajul netrimis (ex. o mențiune @nume începută) aparține conversației
+    // curente — la schimbarea conversației nu trebuie să rămână în căsuța de
+    // scris, altfel "se scurge" într-o conversație unde n-are sens
+    inputEl.value = "";
+    autoGrow();
+    hideMentionList();
+  }
+
   conversationSelect.addEventListener("change", () => {
     currentConversationId = conversationSelect.value;
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
     typingName = null;
     forceScrollToBottom = true;
+    resetDeleteConfirm();
+    clearDraftInput();
     poll();
   });
 
@@ -633,19 +667,40 @@
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
     typingName = null;
     forceScrollToBottom = true;
+    clearDraftInput();
     await loadConversations();
     poll();
   });
 
+  let deleteConfirmTimeout = null;
+
+  function resetDeleteConfirm() {
+    if (deleteConfirmTimeout) {
+      clearTimeout(deleteConfirmTimeout);
+      deleteConfirmTimeout = null;
+      deleteConversationButton.textContent = "Șterge";
+      deleteConversationButton.classList.remove("confirming");
+    }
+  }
+
   deleteConversationButton.addEventListener("click", async () => {
     if (!currentConversationId) return;
-    const selectedOption = conversationSelect.options[conversationSelect.selectedIndex];
-    const label = selectedOption ? selectedOption.textContent : "conversația";
-    if (!confirm(`Ștergi "${label}"? Nu se poate anula.`)) return;
+
+    // primul click cere confirmare inline (fără dialogul brut al browserului);
+    // al doilea click, în următoarele 3s, chiar șterge — altfel revine singur
+    if (!deleteConfirmTimeout) {
+      deleteConversationButton.textContent = "Sigur?";
+      deleteConversationButton.classList.add("confirming");
+      deleteConfirmTimeout = setTimeout(resetDeleteConfirm, 3000);
+      return;
+    }
+    resetDeleteConfirm();
+
     await fetch(`/conversations/${currentConversationId}`, { method: "DELETE" });
     currentConversationId = null;
     typingName = null;
     forceScrollToBottom = true;
+    clearDraftInput();
     await loadConversations();
     poll();
   });
@@ -697,6 +752,9 @@
     if (!mentionListEl.hidden && !mentionListEl.contains(event.target) && event.target !== inputEl) {
       hideMentionList();
     }
+    if (deleteConfirmTimeout && event.target !== deleteConversationButton) {
+      resetDeleteConfirm();
+    }
   });
 
   formEl.addEventListener("submit", async (event) => {
@@ -724,6 +782,7 @@
       poll();
     } finally {
       submitButton.disabled = false;
+      inputEl.focus();
     }
   });
 
@@ -733,6 +792,7 @@
     await loadConversations();
     await poll();
     setInterval(poll, 1500);
+    inputEl.focus();
   }
 
   init();
