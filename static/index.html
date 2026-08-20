@@ -113,7 +113,10 @@
     font-size: 0.8rem;
     white-space: nowrap;
   }
-  .persona-chip-name { font-weight: 600; color: var(--persona-chip-color, var(--text-primary)); }
+  .persona-chip-name {
+    font-weight: 600;
+    color: color-mix(in srgb, var(--persona-chip-color, var(--text-primary)) 50%, black);
+  }
   .persona-chip .info-icon {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -247,6 +250,10 @@
      pentru că flex-end ascunde silențios mesajele mai vechi din scroll
      (surplusul dinspre "început" nu mai intră în scrollHeight) */
   #messages > *:first-child { margin-top: auto; }
+  /* starea goală (fără mesaje) stă mai bine aproape de vârf decât lipită
+     de input, cu un gol mare deasupra */
+  #messages:has(> #empty-state) { justify-content: flex-start; }
+  #messages > #empty-state { margin-top: 0; }
   #scroll-bottom-button {
     position: absolute;
     top: 100%;
@@ -271,14 +278,24 @@
   .message .name {
     font-weight: 600;
     font-size: 0.8rem;
-    color: var(--persona-color, var(--accent-primary));
+    /* culoarea brută a persona pe bula tinctă din aceeași culoare pică sub
+       4.5:1 (WCAG AA) pentru majoritatea persoanelor — o închidem spre negru
+       ca să aibă destul contrast, păstrând nuanța recognoscibilă */
+    color: color-mix(in srgb, var(--persona-color, var(--accent-primary)) 50%, black);
   }
   @media (prefers-color-scheme: dark) {
     /* culorile fixe per-persona (din personas.json) sunt gândite pentru fundal
        deschis — pe fundal întunecat, unele (ex. bleumarin închis) devin
-       aproape ilizibile, așa că le deschidem amestecându-le cu alb */
+       aproape ilizibile, așa că le deschidem amestecându-le cu alb, suficient
+       cât să treacă de 4.5:1 pe toate persoanele */
     .message .name {
-      color: color-mix(in srgb, var(--persona-color, var(--accent-primary)) 50%, white);
+      color: color-mix(in srgb, var(--persona-color, var(--accent-primary)) 40%, white);
+    }
+    .persona-chip-name {
+      color: color-mix(in srgb, var(--persona-chip-color, var(--text-primary)) 40%, white);
+    }
+    .mention-item-name {
+      color: color-mix(in srgb, var(--mention-item-color, var(--text-primary)) 40%, white);
     }
   }
   .message .time { font-size: 0.7rem; color: var(--text-muted); }
@@ -387,7 +404,10 @@
   .mention-item:last-child { border-radius: 0 0 7px 7px; }
   .mention-item.active, .mention-item:hover { background: var(--mention-hover-bg); }
   .mention-item-emoji { font-size: 1.05rem; flex-shrink: 0; }
-  .mention-item-name { font-weight: 600; color: var(--mention-item-color, var(--text-primary)); }
+  .mention-item-name {
+    font-weight: 600;
+    color: color-mix(in srgb, var(--mention-item-color, var(--text-primary)) 50%, black);
+  }
   .mention-tag {
     font-weight: 600;
     color: var(--accent-mention);
@@ -404,7 +424,12 @@
   }
   button.secondary { background: var(--accent-secondary); }
   button:disabled { opacity: 0.6; cursor: default; }
-  #new-conversation-button { background: var(--accent-success); }
+  #new-conversation-button {
+    background: transparent;
+    color: var(--accent-success);
+    border: 1px solid var(--accent-success);
+  }
+  #new-conversation-button:hover { background: var(--accent-success); color: white; }
   @keyframes confirm-pulse {
     from { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
     to { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
@@ -605,14 +630,31 @@
     return personas.find((p) => mentionTokens(p.name).includes(folded));
   }
 
+  // dacă mențiunea s-a potrivit doar pe primul cuvânt dintr-un nume compus
+  // (ex. "@Ardeleanul" pentru persona "Ardeleanul Nelu"), iar restul numelui
+  // urmează literal după, cu spații, extindem potrivirea ca s-o consume —
+  // altfel cuvântul rămas apare duplicat ca text simplu ("@Ardeleanul Nelu Nelu")
+  function extendMentionMatch(text, matchEnd, persona, matchedWord) {
+    const words = persona.name.split(/\s+/);
+    if (words.length < 2 || fold(words[0]) !== fold(matchedWord)) return matchEnd;
+    let cursor = matchEnd;
+    for (let i = 1; i < words.length; i++) {
+      const rest = text.slice(cursor).match(/^\s+([\p{L}\p{N}_]+)/u);
+      if (!rest || fold(rest[1]) !== fold(words[i])) return matchEnd;
+      cursor += rest[0].length;
+    }
+    return cursor;
+  }
+
   // afișează @NumeFaraSpatiu ca "@Nume Cu Spații", evidențiat, fără să schimbe textul salvat
   function renderMessageContent(el, text) {
     el.textContent = "";
     let lastIndex = 0;
     for (const match of text.matchAll(MESSAGE_MENTION_RE)) {
+      const start = match.index;
+      if (start < lastIndex) continue; // deja acoperit de o potrivire extinsă anterior
       const persona = personaForMentionToken(match[1]);
       if (!persona) continue;
-      const start = match.index;
       if (start > lastIndex) {
         el.appendChild(document.createTextNode(text.slice(lastIndex, start)));
       }
@@ -620,7 +662,7 @@
       tag.className = "mention-tag";
       tag.textContent = `@${persona.name}`;
       el.appendChild(tag);
-      lastIndex = start + match[0].length;
+      lastIndex = extendMentionMatch(text, start + match[0].length, persona, match[1]);
     }
     if (lastIndex < text.length) {
       el.appendChild(document.createTextNode(text.slice(lastIndex)));
