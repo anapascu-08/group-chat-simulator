@@ -27,6 +27,10 @@ class ChatRequest(BaseModel):
     name: Optional[str] = None
 
 
+class RenameRequest(BaseModel):
+    title: str
+
+
 def create_app(
     personas: Optional[list] = None,
     generate_response: Callable = _default_generate_response,
@@ -126,6 +130,14 @@ def create_app(
         store.reset(conversation_id)
         state["round_ids"][conversation_id] = state["round_ids"].get(conversation_id, 0) + 1
         state["typing"][conversation_id] = None
+        return {"status": "ok"}
+
+    @app.patch("/conversations/{conversation_id}")
+    def rename_conversation(conversation_id: str, payload: RenameRequest):
+        try:
+            store.rename(conversation_id, payload.title)
+        except ConversationNotFound:
+            raise HTTPException(status_code=404, detail="Conversație inexistentă")
         return {"status": "ok"}
 
     @app.delete("/conversations/{conversation_id}")

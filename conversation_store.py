@@ -54,6 +54,13 @@ class ConversationStore:
         data["messages"] = []
         self._write(data)
 
+    def rename(self, conversation_id: str, title: str) -> None:
+        # titlu gol => renunță la denumirea custom, revenim la cea derivată
+        # din primul mesaj (vezi _title_for)
+        data = self._read(conversation_id)
+        data["title"] = title.strip() or None
+        self._write(data)
+
     def delete(self, conversation_id: str) -> None:
         path = self._path(conversation_id)
         if not path.exists():
@@ -70,6 +77,9 @@ class ConversationStore:
 
     @staticmethod
     def _title_for(data: dict) -> str:
+        custom = data.get("title")
+        if custom:
+            return custom
         for msg in data["messages"]:
             content = msg["content"].strip()
             if content:

@@ -271,3 +271,35 @@ def test_conversation_list_reflects_new_title_after_first_message(tmp_path):
     conversations = client.get("/conversations").json()
     conv = next(c for c in conversations if c["id"] == conversation_id)
     assert conv["title"] == "Primul mesaj aici"
+
+
+def test_rename_conversation_updates_the_title(tmp_path):
+    client = make_client(tmp_path=tmp_path)
+    conversation_id = first_conversation_id(client)
+    client.post(f"/conversations/{conversation_id}/chat", json={"message": "Primul mesaj aici"})
+
+    response = client.patch(f"/conversations/{conversation_id}", json={"title": "Titlu ales de mine"})
+
+    assert response.status_code == 200
+    conversations = client.get("/conversations").json()
+    conv = next(c for c in conversations if c["id"] == conversation_id)
+    assert conv["title"] == "Titlu ales de mine"
+
+
+def test_rename_survives_new_messages(tmp_path):
+    client = make_client(tmp_path=tmp_path)
+    conversation_id = first_conversation_id(client)
+    client.post(f"/conversations/{conversation_id}/chat", json={"message": "Primul mesaj aici"})
+    client.patch(f"/conversations/{conversation_id}", json={"title": "Titlu ales de mine"})
+
+    client.post(f"/conversations/{conversation_id}/chat", json={"message": "Al doilea mesaj"})
+
+    conversations = client.get("/conversations").json()
+    conv = next(c for c in conversations if c["id"] == conversation_id)
+    assert conv["title"] == "Titlu ales de mine"
+
+
+def test_rename_unknown_conversation_returns_404(tmp_path):
+    client = make_client(tmp_path=tmp_path)
+    response = client.patch("/conversations/nu-exista", json={"title": "Titlu nou"})
+    assert response.status_code == 404

@@ -196,6 +196,24 @@
     white-space: nowrap;
   }
   .conversation-row-meta { font-size: 0.75rem; color: var(--text-muted); }
+  .conversation-row-title-input {
+    width: 100%;
+    font-size: 0.85rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    border: 1px solid var(--accent-primary);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+  .conversation-row-rename {
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    background: transparent;
+    color: var(--text-faint);
+  }
+  .conversation-row-rename:hover { color: var(--text-primary); background: var(--mention-hover-bg); }
   .conversation-row-delete {
     flex-shrink: 0;
     padding: 0.25rem 0.5rem;
@@ -501,6 +519,7 @@
   const CONVERSATION_PANEL_LIMIT = 15;
   let deleteConfirmId = null;
   let deleteConfirmTimeout = null;
+  let renamingId = null;
   const nameColors = new Map();
   const palette = ["#e11d48", "#059669", "#7c3aed", "#d97706", "#0891b2", "#be123c", "#4338ca"];
   const personaEmojis = new Map();
@@ -1052,6 +1071,7 @@
     forceScrollToBottom = true;
     prevMessages = [];
     resetDeleteConfirm();
+    cancelRename();
     clearDraftInput();
     updateConversationTrigger();
     renderConversationPanel();
@@ -1060,6 +1080,7 @@
 
   async function deleteConversation(id) {
     resetDeleteConfirm();
+    cancelRename();
     await fetch(`/conversations/${id}`, { method: "DELETE" });
     if (id === currentConversationId) {
       currentConversationId = null;
@@ -1083,43 +1104,85 @@
       : conversationsCache.slice(0, CONVERSATION_PANEL_LIMIT);
 
     for (const conv of visibleConversations) {
+      const isRenaming = renamingId === conv.id;
       const row = document.createElement("div");
       row.className = "conversation-row" + (conv.id === currentConversationId ? " active" : "");
       row.setAttribute("role", "option");
       row.setAttribute("aria-selected", conv.id === currentConversationId ? "true" : "false");
-      row.addEventListener("click", () => selectConversation(conv.id));
+      if (!isRenaming) row.addEventListener("click", () => selectConversation(conv.id));
 
       const main = document.createElement("div");
       main.className = "conversation-row-main";
-      const title = document.createElement("div");
-      title.className = "conversation-row-title";
-      title.textContent = conv.title;
-      const meta = document.createElement("div");
-      meta.className = "conversation-row-meta";
-      meta.textContent = formatConversationMeta(conv);
-      main.appendChild(title);
-      main.appendChild(meta);
 
-      const isConfirming = deleteConfirmId === conv.id;
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "conversation-row-delete" + (isConfirming ? " confirming" : "");
-      deleteBtn.textContent = isConfirming ? "Sigur?" : "🗑";
-      deleteBtn.setAttribute("aria-label", `Șterge conversația „${conv.title}”`);
-      deleteBtn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (deleteConfirmId !== conv.id) {
-          deleteConfirmId = conv.id;
-          if (deleteConfirmTimeout) clearTimeout(deleteConfirmTimeout);
-          deleteConfirmTimeout = setTimeout(resetDeleteConfirm, 3000);
-          renderConversationPanel();
-          return;
-        }
-        deleteConversation(conv.id);
-      });
+      if (isRenaming) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "conversation-row-title-input";
+        input.value = conv.title;
+        input.addEventListener("click", (event) => event.stopPropagation());
+        input.addEventListener("keydown", (event) => {
+          event.stopPropagation();
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commitRename(conv.id, input.value);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            cancelRename();
+          }
+        });
+        input.addEventListener("blur", () => commitRename(conv.id, input.value));
+        main.appendChild(input);
+        requestAnimationFrame(() => {
+          input.focus();
+          input.select();
+        });
+      } else {
+        const title = document.createElement("div");
+        title.className = "conversation-row-title";
+        title.textContent = conv.title;
+        const meta = document.createElement("div");
+        meta.className = "conversation-row-meta";
+        meta.textContent = formatConversationMeta(conv);
+        main.appendChild(title);
+        main.appendChild(meta);
+      }
 
       row.appendChild(main);
-      row.appendChild(deleteBtn);
+
+      if (!isRenaming) {
+        const renameBtn = document.createElement("button");
+        renameBtn.type = "button";
+        renameBtn.className = "conversation-row-rename";
+        renameBtn.textContent = "✏️";
+        renameBtn.setAttribute("aria-label", `Redenumește conversația „${conv.title}”`);
+        renameBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          resetDeleteConfirm();
+          renamingId = conv.id;
+          renderConversationPanel();
+        });
+        row.appendChild(renameBtn);
+
+        const isConfirming = deleteConfirmId === conv.id;
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "conversation-row-delete" + (isConfirming ? " confirming" : "");
+        deleteBtn.textContent = isConfirming ? "Sigur?" : "🗑";
+        deleteBtn.setAttribute("aria-label", `Șterge conversația „${conv.title}”`);
+        deleteBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (deleteConfirmId !== conv.id) {
+            deleteConfirmId = conv.id;
+            if (deleteConfirmTimeout) clearTimeout(deleteConfirmTimeout);
+            deleteConfirmTimeout = setTimeout(resetDeleteConfirm, 3000);
+            renderConversationPanel();
+            return;
+          }
+          deleteConversation(conv.id);
+        });
+        row.appendChild(deleteBtn);
+      }
+
       conversationPanel.appendChild(row);
     }
 
@@ -1136,6 +1199,37 @@
       });
       conversationPanel.appendChild(showMore);
     }
+  }
+
+  function cancelRename() {
+    if (renamingId) {
+      renamingId = null;
+      renderConversationPanel();
+    }
+  }
+
+  async function commitRename(id, rawTitle) {
+    // apelat și de blur (inclusiv blur-ul implicit când input-ul dispare din
+    // DOM la un re-render) — guard-ul cu renamingId evită un commit dublu
+    // dacă Enter/Escape a rulat deja
+    if (renamingId !== id) return;
+    renamingId = null;
+    const title = rawTitle.trim();
+    const conv = conversationsCache.find((c) => c.id === id);
+    if (!title || (conv && title === conv.title)) {
+      renderConversationPanel();
+      return;
+    }
+    try {
+      await fetch(`/conversations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+    } catch (err) {
+      // ignorăm — la următorul loadConversations lista revine la starea reală de pe server
+    }
+    await loadConversations();
   }
 
   function resetDeleteConfirm() {
@@ -1282,6 +1376,7 @@
       hideMentionList();
     }
     resetDeleteConfirm();
+    cancelRename();
     if (conversationPanelOpen && !conversationDropdown.contains(event.target)) {
       closeConversationPanel();
     }

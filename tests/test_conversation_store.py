@@ -87,6 +87,35 @@ def test_list_title_keeps_long_message_in_full(tmp_path):
     assert summaries[0]["title"] == message
 
 
+def test_rename_overrides_the_derived_title(tmp_path):
+    store = ConversationStore(tmp_path)
+    data = store.create()
+    store.append_message(data["id"], "Tu", "Salut tuturor")
+
+    store.rename(data["id"], "Titlu ales de mine")
+
+    summaries = store.list_conversations()
+    assert summaries[0]["title"] == "Titlu ales de mine"
+
+
+def test_rename_with_blank_title_reverts_to_derived_title(tmp_path):
+    store = ConversationStore(tmp_path)
+    data = store.create()
+    store.append_message(data["id"], "Tu", "Salut tuturor")
+    store.rename(data["id"], "Titlu ales de mine")
+
+    store.rename(data["id"], "   ")
+
+    summaries = store.list_conversations()
+    assert summaries[0]["title"] == "Salut tuturor"
+
+
+def test_rename_raises_for_unknown_id(tmp_path):
+    store = ConversationStore(tmp_path)
+    with pytest.raises(ConversationNotFound):
+        store.rename("nu-exista", "Titlu nou")
+
+
 def test_reset_clears_persisted_messages(tmp_path):
     store = ConversationStore(tmp_path)
     data = store.create()
