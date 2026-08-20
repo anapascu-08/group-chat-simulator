@@ -47,6 +47,7 @@
     }
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     font-family: system-ui, -apple-system, sans-serif;
     max-width: 640px;
@@ -54,8 +55,12 @@
     padding: 1rem;
     background: var(--bg-page);
     color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
   }
-  h1 { font-size: 1.25rem; }
+  h1 { font-size: 1.25rem; flex-shrink: 0; }
   #settings-bar {
     display: flex;
     align-items: center;
@@ -108,6 +113,7 @@
     font-size: 0.8rem;
     white-space: nowrap;
   }
+  .persona-chip-name { font-weight: 600; color: var(--persona-chip-color, var(--text-primary)); }
   .persona-chip .info-icon {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -216,13 +222,21 @@
     border-radius: 0;
   }
   .conversation-panel-more:hover { background: var(--mention-hover-bg); }
-  #messages-wrap { position: relative; margin-bottom: 0.75rem; }
+  #messages-wrap {
+    position: relative;
+    margin-bottom: 0.75rem;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
   #messages-wrap.has-scroll-button { margin-bottom: 2.5rem; }
   #messages {
     display: flex;
     flex-direction: column;
-    min-height: 320px;
-    max-height: 60vh;
+    justify-content: flex-end;
+    flex: 1;
+    min-height: 140px;
     overflow-y: auto;
     padding: 0.75rem;
     background: var(--bg-messages);
@@ -329,12 +343,13 @@
     font-size: 1rem;
     font-family: inherit;
     resize: none;
+    min-height: 3.6rem;
     max-height: 8rem;
     line-height: 1.4;
     background: var(--bg-surface);
     color: var(--text-primary);
   }
-  #message-input::placeholder { color: var(--text-muted); font-size: 0.85rem; }
+  #message-input::placeholder { color: var(--text-muted); font-size: 0.95rem; }
   @media (prefers-color-scheme: dark) {
     /* placeholder-ul implicit al browserului iese prea subțire/estompat pe
        fundal întunecat — îl îngroșăm ca să se citească mai clar */
@@ -355,11 +370,20 @@
     z-index: 10;
   }
   .mention-item {
-    padding: 0.4rem 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
     cursor: pointer;
     font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-color-light);
   }
+  .mention-item:last-child { border-bottom: none; }
+  .mention-item:first-child { border-radius: 7px 7px 0 0; }
+  .mention-item:last-child { border-radius: 0 0 7px 7px; }
   .mention-item.active, .mention-item:hover { background: var(--mention-hover-bg); }
+  .mention-item-emoji { font-size: 1.05rem; flex-shrink: 0; }
+  .mention-item-name { font-weight: 600; color: var(--mention-item-color, var(--text-primary)); }
   .mention-tag {
     font-weight: 600;
     color: var(--accent-mention);
@@ -503,7 +527,20 @@
     mentionMatches.forEach((p, i) => {
       const item = document.createElement("div");
       item.className = "mention-item" + (i === mentionActiveIndex ? " active" : "");
-      item.textContent = labelFor(p.name);
+
+      const emoji = personaEmojis.get(p.name);
+      if (emoji) {
+        const emojiEl = document.createElement("span");
+        emojiEl.className = "mention-item-emoji";
+        emojiEl.textContent = emoji;
+        item.appendChild(emojiEl);
+      }
+      const nameEl = document.createElement("span");
+      nameEl.className = "mention-item-name";
+      nameEl.textContent = p.name;
+      nameEl.style.setProperty("--mention-item-color", colorFor(p.name));
+      item.appendChild(nameEl);
+
       item.addEventListener("mousedown", (event) => {
         event.preventDefault(); // păstrează focusul/cursorul din textarea
         applyMention(p);
@@ -514,7 +551,7 @@
   }
 
   function updateInputPlaceholder() {
-    inputEl.placeholder = "Scrie un mesaj... @nume pentru a menționa pe cineva anume";
+    inputEl.placeholder = "Scrie un mesaj... @nume pentru a menționa";
   }
 
   function updateMentionAutocomplete() {
@@ -619,7 +656,13 @@
     for (const p of personas) {
       const chip = document.createElement("span");
       chip.className = "persona-chip";
-      chip.appendChild(document.createTextNode(labelFor(p.name)));
+      const emoji = personaEmojis.get(p.name);
+      if (emoji) chip.appendChild(document.createTextNode(`${emoji} `));
+      const nameEl = document.createElement("span");
+      nameEl.className = "persona-chip-name";
+      nameEl.textContent = p.name;
+      nameEl.style.setProperty("--persona-chip-color", colorFor(p.name));
+      chip.appendChild(nameEl);
       const tooltip = tooltipFor(p);
       if (tooltip) {
         chip.title = tooltip;
