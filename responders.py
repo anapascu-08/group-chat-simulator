@@ -5,7 +5,7 @@ import random
 
 from mentions import has_mention, mentioned_personas
 
-UNMENTIONED_SHARE = 0.2
+UNMENTIONED_SHARE = 0.08
 
 
 def _shuffled(items: list[dict], rng) -> list[dict]:

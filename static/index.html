@@ -647,22 +647,25 @@
   }
 
   // afișează @NumeFaraSpatiu ca "@Nume Cu Spații", evidențiat, fără să schimbe textul salvat
-  function renderMessageContent(el, text) {
+  // `me` e numele curent al userului (vezi currentUsername()) — o mențiune către el se
+  // evidențiază la fel ca una către o persona, chiar dacă nu apare în lista de personas
+  function renderMessageContent(el, text, me) {
     el.textContent = "";
     let lastIndex = 0;
     for (const match of text.matchAll(MESSAGE_MENTION_RE)) {
       const start = match.index;
       if (start < lastIndex) continue; // deja acoperit de o potrivire extinsă anterior
       const persona = personaForMentionToken(match[1]);
-      if (!persona) continue;
+      const target = persona || (mentionTokens(me).includes(fold(match[1])) ? { name: me } : null);
+      if (!target) continue;
       if (start > lastIndex) {
         el.appendChild(document.createTextNode(text.slice(lastIndex, start)));
       }
       const tag = document.createElement("span");
       tag.className = "mention-tag";
-      tag.textContent = `@${persona.name}`;
+      tag.textContent = `@${target.name}`;
       el.appendChild(tag);
-      lastIndex = extendMentionMatch(text, start + match[0].length, persona, match[1]);
+      lastIndex = extendMentionMatch(text, start + match[0].length, target, match[1]);
     }
     if (lastIndex < text.length) {
       el.appendChild(document.createTextNode(text.slice(lastIndex)));
@@ -856,7 +859,7 @@
 
     const contentEl = document.createElement("div");
     contentEl.className = "content";
-    renderMessageContent(contentEl, msg.content);
+    renderMessageContent(contentEl, msg.content, me);
     div.appendChild(contentEl);
 
     // în chat-urile reale nu-ți vezi propriul nume — doar ora, discretă, în

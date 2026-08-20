@@ -16,8 +16,7 @@ BEHAVIOR_GUIDELINES = (
     "adresează-te-i direct, undeva în mesaj, cu @Nume, folosind exact numele ei "
     "așa cum apare în conversație (ex. @Cântărețul, @Eliade). Fă asta ori de câte "
     "ori răspunzi cuiva anume, nu doar ocazional — ca într-un chat real de grup "
-    "unde oamenii se strigă pe nume. Nu te taguiezi niciodată pe tine însuți — "
-    "@Nume e mereu pentru altcineva din conversație, nu pentru propriul tău nume."
+    "unde oamenii se strigă pe nume."
 )
 
 FALLBACK_REPLY = "..."

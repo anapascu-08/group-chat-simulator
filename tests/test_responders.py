@@ -33,13 +33,13 @@ def test_select_responders_shuffles_order_when_multiple_respond():
 def test_mentioned_persona_gets_certain_response_others_get_unmentioned_share():
     history = hist(("Tu", "@Robi ce zici de religie?"))
     probs = response_probabilities(history, PERSONAS)
-    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 1.0}
+    assert probs == {"Nea Fănică": 0.04, "Mircea Eliade": 0.04, "Robi": 1.0}
 
 
 def test_two_mentioned_both_certain_unmentioned_gets_full_share():
     history = hist(("Tu", "@Robi @Fănică ce ziceți?"))
     probs = response_probabilities(history, PERSONAS)
-    assert probs == {"Nea Fănică": 1.0, "Robi": 1.0, "Mircea Eliade": 0.2}
+    assert probs == {"Nea Fănică": 1.0, "Robi": 1.0, "Mircea Eliade": 0.08}
 
 
 def test_all_mentioned_all_certain():
@@ -62,10 +62,10 @@ def test_mentioned_persona_always_responds_even_when_rng_would_fail_bernoulli():
 
 
 def test_unmentioned_persona_can_join_via_probability_threshold():
-    # @Robi -> menționat, răspunde garantat; ceilalți -> 0.1 fiecare (UNMENTIONED_SHARE/2)
+    # @Robi -> menționat, răspunde garantat; ceilalți -> 0.04 fiecare (UNMENTIONED_SHARE/2)
     history = hist(("Tu", "@Robi ce zici de religie?"))
-    # Fănică(0.1): sub prag -> se bagă; Eliade(0.1): peste prag -> nu; 0.99 -> amestecul nu schimbă ordinea
-    values = iter([0.05, 0.5, 0.99])
+    # Fănică(0.04): sub prag -> se bagă; Eliade(0.04): peste prag -> nu; 0.99 -> amestecul nu schimbă ordinea
+    values = iter([0.02, 0.5, 0.99])
     result = select_responders(history, PERSONAS, rng=lambda: next(values))
     assert result == [PERSONAS[2], PERSONAS[0]]
 
@@ -116,4 +116,4 @@ def test_probabilities_use_pending_mention_from_earlier_message_without_current_
         ("Tu", "alo, ești acolo?"),
     )
     probs = response_probabilities(history, PERSONAS)
-    assert probs == {"Nea Fănică": 0.1, "Mircea Eliade": 0.1, "Robi": 1.0}
+    assert probs == {"Nea Fănică": 0.04, "Mircea Eliade": 0.04, "Robi": 1.0}
