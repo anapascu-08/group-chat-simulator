@@ -4,6 +4,7 @@ import re
 from typing import Optional
 
 from conversation import Conversation
+from mentions import strip_self_mentions
 from ollama_client import generate_response as _default_generate_response
 
 BEHAVIOR_GUIDELINES = (
@@ -15,7 +16,8 @@ BEHAVIOR_GUIDELINES = (
     "adresează-te-i direct, undeva în mesaj, cu @Nume, folosind exact numele ei "
     "așa cum apare în conversație (ex. @Cântărețul, @Eliade). Fă asta ori de câte "
     "ori răspunzi cuiva anume, nu doar ocazional — ca într-un chat real de grup "
-    "unde oamenii se strigă pe nume."
+    "unde oamenii se strigă pe nume. Nu te taguiezi niciodată pe tine însuți — "
+    "@Nume e mereu pentru altcineva din conversație, nu pentru propriul tău nume."
 )
 
 FALLBACK_REPLY = "..."
@@ -37,9 +39,9 @@ def humanize(text: str) -> str:
     return text.strip()
 
 
-def _generate_and_humanize(generate_response, system_prompt, messages, temperature) -> str:
+def _generate_and_humanize(generate_response, system_prompt, messages, temperature, persona) -> str:
     raw = generate_response(system_prompt=system_prompt, messages=messages, temperature=temperature)
-    return humanize(raw)
+    return strip_self_mentions(humanize(raw), persona)
 
 
 def respond_as(
@@ -74,7 +76,9 @@ def respond_as(
         # răspuns gol — altfel excepția ar bloca indicatorul "X scrie..." în
         # app.py, fiindcă linia care îl resetează nu s-ar mai executa.
         try:
-            reply = _generate_and_humanize(generate_response, system_prompt, messages, persona["temperature"])
+            reply = _generate_and_humanize(
+                generate_response, system_prompt, messages, persona["temperature"], persona
+            )
         except Exception:
             reply = ""
         if reply:

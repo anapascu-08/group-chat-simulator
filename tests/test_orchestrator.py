@@ -169,3 +169,16 @@ def test_respond_as_humanizes_reply_before_storing():
 
     assert reply == "Salut prietene!"
     assert conv.get_history()[-1]["content"] == "Salut prietene!"
+
+
+def test_respond_as_strips_self_mention_before_storing():
+    """Regresie: modelul mai taguiește din obicei propriul nume — nu are ce
+    căuta o persona taguită pe ea însăși în chat."""
+    conv = Conversation()
+    conv.add_message("Tu", "Salut!")
+    persona = {"name": "Nea Fănică", "system_prompt": "sp", "temperature": 0.5}
+
+    reply = respond_as(conv, persona, generate_response=lambda **kwargs: "@Fănică zice hooo, măi!")
+
+    assert reply == "Fănică zice hooo, măi!"
+    assert conv.get_history()[-1]["content"] == "Fănică zice hooo, măi!"

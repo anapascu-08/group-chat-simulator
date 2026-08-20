@@ -23,6 +23,16 @@ def _name_tokens(name: str) -> set[str]:
     return tokens
 
 
+def _persona_tokens(persona: dict) -> set[str]:
+    """Toate formele care pot identifica o persona într-o mențiune: numele din
+    `personas.json` plus orice `aliases` (ex. porecla cu care se prezintă
+    persona în propriul `system_prompt`, dacă diferă de `name`)."""
+    tokens = _name_tokens(persona["name"])
+    for alias in persona.get("aliases", []):
+        tokens |= _name_tokens(alias)
+    return tokens
+
+
 def has_mention(text: str) -> bool:
     """Dacă mesajul conține cel puțin o mențiune @nume."""
     return bool(_MENTION_RE.search(text))
@@ -45,5 +55,26 @@ def mentioned_personas(text: str, personas: list[dict]) -> list[dict]:
     return [
         p
         for p in personas
-        if any(token.startswith(m) for token in _name_tokens(p["name"]) for m in mentions)
+        if any(token.startswith(m) for token in _persona_tokens(p) for m in mentions)
     ]
+
+
+def strip_self_mentions(text: str, persona: dict) -> str:
+    """Scoate @-ul din mențiunile în care o persona s-a taguiat pe ea însăși.
+
+    Modelele mai strecoară, din obiceiul de a taguia pe oricine adresează, un
+    @NumePropriu chiar când personajul vorbește despre sine — inclusiv sub
+    porecla din propriul `system_prompt` (ex. Cântărețul Nae se prezintă
+    "Nea Nae"), de-aia verificăm și `aliases`, nu doar `name`. Nu are sens ca
+    cineva să apară taguit pe sine în chat, așa că păstrăm cuvântul dar
+    scoatem @, ca să nu se mai randeze ca mențiune în UI.
+    """
+    own_tokens = _persona_tokens(persona)
+
+    def _replace(match: re.Match) -> str:
+        mention = match.group(1)
+        if any(token.startswith(_fold(mention)) for token in own_tokens):
+            return mention
+        return match.group(0)
+
+    return _MENTION_RE.sub(_replace, text)
