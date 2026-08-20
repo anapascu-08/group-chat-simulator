@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional, Union
 
 DEFAULT_DIR = "conversations"
-TITLE_MAX_LEN = 40
 DEFAULT_TITLE = "Conversație nouă"
 
 
@@ -74,7 +73,7 @@ class ConversationStore:
         for msg in data["messages"]:
             content = msg["content"].strip()
             if content:
-                return content[:TITLE_MAX_LEN]
+                return content
         return DEFAULT_TITLE
 
     def _path(self, conversation_id: str) -> Path:

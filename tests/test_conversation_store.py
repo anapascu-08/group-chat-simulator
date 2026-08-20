@@ -1,6 +1,6 @@
 import pytest
 
-from conversation_store import TITLE_MAX_LEN, ConversationNotFound, ConversationStore
+from conversation_store import ConversationNotFound, ConversationStore
 
 
 def test_create_returns_conversation_with_empty_history(tmp_path):
@@ -72,8 +72,19 @@ def test_list_title_uses_first_non_empty_message(tmp_path):
     store.append_message(data["id"], "Tu", message)
 
     summaries = store.list_conversations()
-    assert summaries[0]["title"] == message[:TITLE_MAX_LEN]
+    assert summaries[0]["title"] == message
     assert summaries[0]["message_count"] == 1
+
+
+def test_list_title_keeps_long_message_in_full(tmp_path):
+    store = ConversationStore(tmp_path)
+    data = store.create()
+
+    message = "Ați văzut ultimele știri? Ce părere aveți despre asta?"
+    store.append_message(data["id"], "Tu", message)
+
+    summaries = store.list_conversations()
+    assert summaries[0]["title"] == message
 
 
 def test_reset_clears_persisted_messages(tmp_path):

@@ -139,6 +139,8 @@
     text-align: left;
   }
   #conversation-trigger-title {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -512,10 +514,7 @@
   }
 
   function updateInputPlaceholder() {
-    inputEl.placeholder =
-      lastMessageCount === 0
-        ? "Scrie un mesaj..."
-        : "Scrie un mesaj... @nume pentru a menționa pe cineva anume";
+    inputEl.placeholder = "Scrie un mesaj... @nume pentru a menționa pe cineva anume";
   }
 
   function updateMentionAutocomplete() {
@@ -922,11 +921,6 @@
     });
   }
 
-  function formatConversationLabel(conv) {
-    const when = relativeWhen(new Date(conv.created_at));
-    return when ? `${conv.title} · ${when}` : conv.title;
-  }
-
   function formatConversationMeta(conv) {
     const when = relativeWhen(new Date(conv.created_at));
     const count = conv.message_count === 1 ? "1 mesaj" : `${conv.message_count} mesaje`;
@@ -953,7 +947,7 @@
 
   function updateConversationTrigger() {
     const current = conversationsCache.find((c) => c.id === currentConversationId);
-    conversationTriggerTitle.textContent = current ? formatConversationLabel(current) : "Fără conversații";
+    conversationTriggerTitle.textContent = current ? current.title : "Fără conversații";
   }
 
   function selectConversation(id) {
