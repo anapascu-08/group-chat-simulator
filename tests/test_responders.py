@@ -15,14 +15,10 @@ def hist(*pairs):
     return [{"name": name, "content": content} for name, content in pairs]
 
 
-def test_no_mention_falls_back_to_relevance():
+def test_no_mention_returns_all_personas_regardless_of_message_content():
+    # fără @mențiune, nu mai există filtrare pe relevanță tematică — toate
+    # personas răspund, indiferent despre ce vorbește mesajul.
     history = hist(("Tu", "Ce ziceți despre mit și religie?"))
-    result = select_responders(history, PERSONAS)
-    assert result == [PERSONAS[1]]
-
-
-def test_no_mention_and_no_relevance_match_returns_all():
-    history = hist(("Tu", "Ce faceți diseară?"))
     result = select_responders(history, PERSONAS)
     assert {p["name"] for p in result} == {p["name"] for p in PERSONAS}
 

@@ -1,10 +1,9 @@
 """Decide cine răspunde la un mesaj: mențiuni explicite @nume, cu prioritate
-absolută, altfel euristica de relevanță tematică."""
+absolută, altfel răspund toate personas."""
 
 import random
 
 from mentions import has_mention, mentioned_personas
-from routing import relevant_personas
 
 UNMENTIONED_SHARE = 0.2
 
@@ -73,9 +72,11 @@ def select_responders(history: list[dict], personas: list[dict], rng=random.rand
     `response_probabilities` (Bernoulli, folosind partea UNMENTIONED_SHARE
     din probabilități). Dacă ultimul mesaj conține o mențiune care nu se
     potrivește nicio persona (și nimeni altcineva nu are o mențiune
-    activă), nu răspunde nimeni. Altfel, cade pe euristica de relevanță din
-    `routing.py` (deterministă), aplicată pe ultimul mesaj. Când răspund mai
-    multe personas, ordinea în care apar e amestecată (nu cea din
+    activă), nu răspunde nimeni. Altfel, răspund toate personas — nu se mai
+    filtrează pe relevanță tematică (euristica pe cuvinte-cheie din
+    `routing.py` genera false-positive: un cuvânt generic din bio-ul unei
+    persona excludea accidental restul grupului). Când răspund mai multe
+    personas, ordinea în care apar e amestecată (nu cea din
     `personas.json`), ca discuția să nu sune mecanic.
     """
     last_message = history[-1]["content"] if history else ""
@@ -88,4 +89,4 @@ def select_responders(history: list[dict], personas: list[dict], rng=random.rand
         return _shuffled(mentioned + extra, rng)
     if has_mention(last_message):
         return []
-    return _shuffled(relevant_personas(last_message, personas), rng)
+    return _shuffled(personas, rng)

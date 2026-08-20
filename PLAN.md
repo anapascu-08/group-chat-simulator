@@ -63,14 +63,14 @@ Orchestrarea din Fazele 3-6 era inițial provizorie: round-robin, toate personas
   - Ex. 3 personas, 2 cu mențiune activă: 40% / 40% / 20%. 3 personas, 1 cu mențiune activă: 80% / 10% / 10%.
   - Caz de margine — toate personas au mențiune activă (grup fără mențiune gol): grupul menționat primește 100%, împărțit egal.
   - Caz de margine — ultimul mesaj conține o mențiune care nu se potrivește nicio persona, și nimeni altcineva n-are mențiune activă: nimeni nu răspunde.
-- Fără nicio mențiune activă (nici curentă, nici mai veche, nerăspunsă încă): cade pe euristica de relevanță din `routing.py` (deterministă, neschimbată), aplicată pe ultimul mesaj.
+- Fără nicio mențiune activă (nici curentă, nici mai veche, nerăspunsă încă): răspund toate personas. (Inițial exista aici o euristică de relevanță pe cuvinte-cheie, în `routing.py` — eliminată: genera false-positive, ex. un cuvânt generic din bio-ul unei persona excludea accidental restul grupului la un mesaj banal.)
 - `select_responders(history, personas, rng=random.random)` — ia acum istoricul complet (`Conversation.get_history()`), nu doar textul ultimului mesaj; `rng` e injectabil pentru teste deterministe (vezi `tests/test_responders.py`), la fel `create_app(..., rng=...)` în `app.py`.
 - `orchestrator.py` (`BEHAVIOR_GUIDELINES`) instruiește explicit (directiv, nu opțional) personas să folosească `@Nume` când se adresează direct altcuiva din chat (user sau altă persona), cu exemple curente (`@Cântărețul`, `@Eliade`) — verificat cu Ollama real că funcționează repetat, inclusiv o persona menționând trei altele într-un singur răspuns.
 - Dacă toate tragerile Bernoulli dintr-o rundă cu mențiuni active pică pe "nu" (nimeni nu răspunde), `select_responders` garantează totuși un răspuns — alege persoana cu cea mai mare probabilitate din acea rundă. (Cazul "mențiune explicită ce nu se potrivește nicio persona" rămâne "nu răspunde nimeni", neschimbat.)
 
 Idei rămase de explorat, fără decizie fermă încă:
 - Personas care nu au vorbit de un timp să aibă șansă mai mică să sară în conversație fără motiv (independent de mențiuni).
-- Extinderea euristicii de relevanță (fără mențiuni active) cu o pondere probabilistă similară, în loc de all-or-nothing.
+- O euristică de relevanță (fără mențiuni active) mai robustă decât potrivirea pe cuvinte-cheie din bio/personality — varianta veche (`routing.py`) a fost eliminată din cauza false-positive.
 
 ### Faza 8 — Persistență conversații (JSON per conversație) — IMPLEMENTAT
 Istoricul trăia doar în memorie (`Conversation`) — un restart de server sau proces CLI îl pierdea definitiv. Acum fiecare conversație e persistată într-un fișier JSON propriu, în directorul `conversations/` (ignorat în git), numit după un id (uuid4 hex), cu `created_at` separat pentru sortare.
@@ -86,7 +86,7 @@ Istoricul trăia doar în memorie (`Conversation`) — un restart de server sau 
 - `config.py` — citește configurare din environment (`.env`): model, delay, nume user (nou)
 - `ollama_client.py` — singurul loc care vorbește cu Ollama (nou)
 - `conversation.py` — istoric conversație în memorie (nou)
-- `mentions.py` / `routing.py` / `responders.py` — decid cine răspunde: mențiuni explicite `@nume`, cu prioritate, altfel euristică de relevanță (Faza 7, nou)
+- `mentions.py` / `responders.py` — decid cine răspunde: mențiuni explicite `@nume`, cu prioritate, altfel răspund toate personas (Faza 7, nou)
 - `main.py` — CLI, felia verticală din Faza 2 (nou)
 - `app.py` — FastAPI, Faza 4 (nou)
 - `static/index.html` (sau echivalent) — frontend Faza 5 (nou)
