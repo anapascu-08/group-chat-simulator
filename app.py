@@ -73,10 +73,18 @@ def create_app(
                 state["typing"][conversation_id] = None
                 return  # a venit un mesaj nou/reset între timp, runda asta nu mai e validă
             state["typing"][conversation_id] = persona["name"]
-            respond_as(conversation, persona, target_message=target_message, generate_response=generate_response)
-            state["typing"][conversation_id] = None
-            last = conversation.get_history()[-1]
-            store.append_message(conversation_id, last["name"], last["content"], timestamp=last["timestamp"])
+            try:
+                respond_as(conversation, persona, target_message=target_message, generate_response=generate_response)
+                last = conversation.get_history()[-1]
+                store.append_message(conversation_id, last["name"], last["content"], timestamp=last["timestamp"])
+            except Exception as exc:
+                # respond_as tratează deja eșecurile lui Ollama (retry + fallback "...",
+                # vezi orchestrator.py) — try/except-ul de aici prinde orice altceva
+                # neprevăzut (ex. conversația a fost ștearsă între timp), ca o persona
+                # căzută să nu omoare tăcut restul rundei din background task
+                print(f"generate_round: {persona['name']} a eșuat: {exc}")
+            finally:
+                state["typing"][conversation_id] = None
 
     @app.get("/conversations")
     def list_conversations():
