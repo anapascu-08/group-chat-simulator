@@ -9,6 +9,11 @@ _STOPWORDS = {
     "cine", "care", "despre", "pentru", "e", "este", "sunt", "ai", "are",
     "să", "se", "nu", "da", "mai", "ca", "dar", "am", "ați", "eu", "tu",
     "el", "ea", "noi", "voi", "ei", "ele", "al", "a", "the", "și-",
+    # cuvinte generice care apar în personality/bio ca umplutură de stil
+    # ("are o părere despre orice"), nu ca semnal tematic real — dacă rămân
+    # aici, orice mesaj banal care le folosește ("ce părere aveți?") s-ar
+    # potrivi accidental cu o singură persona și ar bloca fallback-ul la toți
+    "părere", "orice",
 }
 
 

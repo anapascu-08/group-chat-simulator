@@ -45,9 +45,6 @@
       --mention-hover-bg: #2c2c55;
       --shadow-color: rgba(0, 0, 0, 0.5);
     }
-    #conversation-select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23aaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
-    }
   }
   * { box-sizing: border-box; }
   body {
@@ -122,22 +119,101 @@
     gap: 0.5rem;
     margin-bottom: 0.75rem;
   }
-  #conversation-select {
+  #conversation-dropdown {
+    position: relative;
     flex: 1;
     min-width: 0;
-    padding: 0.35rem 1.75rem 0.35rem 0.5rem;
+  }
+  #conversation-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
     border-radius: 6px;
     border: 1px solid var(--border-color);
     font-size: 0.85rem;
-    background-color: var(--bg-surface);
+    background: var(--bg-surface);
     color: var(--text-primary);
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.5rem center;
-    background-size: 0.85rem;
+    text-align: left;
   }
+  #conversation-trigger-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #conversation-trigger-arrow {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    transition: transform 0.15s ease;
+  }
+  #conversation-trigger[aria-expanded="true"] #conversation-trigger-arrow {
+    transform: rotate(180deg);
+  }
+  #conversation-panel {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    left: 0;
+    right: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    z-index: 10;
+  }
+  #conversation-panel[hidden] { display: none; }
+  .conversation-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color-light);
+  }
+  .conversation-row:last-child { border-bottom: none; }
+  .conversation-row:hover { background: var(--mention-hover-bg); }
+  .conversation-row.active { background: var(--mention-hover-bg); box-shadow: inset 3px 0 0 var(--accent-primary); }
+  .conversation-row-main { flex: 1; min-width: 0; }
+  .conversation-row-title {
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .conversation-row-meta { font-size: 0.75rem; color: var(--text-muted); }
+  .conversation-row-delete {
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    background: transparent;
+    color: var(--text-faint);
+  }
+  .conversation-row-delete:hover { color: white; background: var(--accent-danger); }
+  .conversation-row-delete.confirming {
+    background: var(--accent-danger);
+    color: white;
+    animation: confirm-pulse 0.6s ease-in-out infinite alternate;
+  }
+  .conversation-panel-empty {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .conversation-panel-more {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    background: transparent;
+    color: var(--accent-primary);
+    font-size: 0.8rem;
+    border-radius: 0;
+  }
+  .conversation-panel-more:hover { background: var(--mention-hover-bg); }
   #messages-wrap { position: relative; margin-bottom: 0.75rem; }
   #messages-wrap.has-scroll-button { margin-bottom: 2.5rem; }
   #messages {
@@ -299,10 +375,6 @@
   button.secondary { background: var(--accent-secondary); }
   button:disabled { opacity: 0.6; cursor: default; }
   #new-conversation-button { background: var(--accent-success); }
-  #delete-conversation-button { background: var(--accent-danger); }
-  #delete-conversation-button.confirming {
-    animation: confirm-pulse 0.6s ease-in-out infinite alternate;
-  }
   @keyframes confirm-pulse {
     from { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
     to { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
@@ -321,9 +393,14 @@
   </div>
   <div id="personas-bar" hidden></div>
   <div id="conversation-bar">
-    <select id="conversation-select"></select>
+    <div id="conversation-dropdown">
+      <button type="button" id="conversation-trigger" aria-haspopup="listbox" aria-expanded="false">
+        <span id="conversation-trigger-title"></span>
+        <span id="conversation-trigger-arrow" aria-hidden="true">▾</span>
+      </button>
+      <div id="conversation-panel" role="listbox" hidden></div>
+    </div>
     <button type="button" id="new-conversation-button" class="secondary">+ Nouă</button>
-    <button type="button" id="delete-conversation-button" class="secondary">Șterge</button>
   </div>
   <div id="messages-wrap">
     <div id="messages"></div>
@@ -345,9 +422,11 @@
   const inputEl = document.getElementById("message-input");
   const statusEl = document.getElementById("status");
   const usernameInput = document.getElementById("username-input");
-  const conversationSelect = document.getElementById("conversation-select");
+  const conversationDropdown = document.getElementById("conversation-dropdown");
+  const conversationTrigger = document.getElementById("conversation-trigger");
+  const conversationTriggerTitle = document.getElementById("conversation-trigger-title");
+  const conversationPanel = document.getElementById("conversation-panel");
   const newConversationButton = document.getElementById("new-conversation-button");
-  const deleteConversationButton = document.getElementById("delete-conversation-button");
   const mentionListEl = document.getElementById("mention-list");
   const scrollBottomButton = document.getElementById("scroll-bottom-button");
   const submitButton = document.getElementById("send-button");
@@ -360,6 +439,12 @@
   const PERSONAS_EXPANDED_KEY = "gcs_personas_expanded";
   let personasExpanded = localStorage.getItem(PERSONAS_EXPANDED_KEY) === "true";
   let currentConversationId = localStorage.getItem(CONVERSATION_KEY) || null;
+  let conversationsCache = [];
+  let conversationPanelOpen = false;
+  let conversationPanelExpanded = false;
+  const CONVERSATION_PANEL_LIMIT = 15;
+  let deleteConfirmId = null;
+  let deleteConfirmTimeout = null;
   const nameColors = new Map();
   const palette = ["#e11d48", "#059669", "#7c3aed", "#d97706", "#0891b2", "#be123c", "#4338ca"];
   const personaEmojis = new Map();
@@ -592,13 +677,14 @@
     if (isNaN(date)) return "";
     const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const diffDays = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
-    if (diffDays === 0) return "Azi";
-    if (diffDays === 1) return "Ieri";
-    return date.toLocaleDateString("ro-RO", {
+    const fullDate = date.toLocaleDateString("ro-RO", {
       day: "numeric",
       month: "long",
       year: date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
     });
+    if (diffDays === 0) return `Azi, ${fullDate}`;
+    if (diffDays === 1) return `Ieri, ${fullDate}`;
+    return fullDate;
   }
 
   function createDaySeparatorEl(timestamp) {
@@ -822,37 +908,172 @@
     renderTypingBubble();
   }
 
+  function relativeWhen(date) {
+    if (isNaN(date)) return "";
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
+    const time = date.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" });
+    if (diffDays === 0) return `azi, ${time}`;
+    if (diffDays === 1) return `ieri, ${time}`;
+    return date.toLocaleDateString("ro-RO", {
+      day: "numeric",
+      month: "short",
+      year: date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+    });
+  }
+
   function formatConversationLabel(conv) {
-    const date = new Date(conv.created_at);
-    const when = isNaN(date)
-      ? ""
-      : date.toLocaleString("ro-RO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-    return when ? `${conv.title} (${when})` : conv.title;
+    const when = relativeWhen(new Date(conv.created_at));
+    return when ? `${conv.title} · ${when}` : conv.title;
+  }
+
+  function formatConversationMeta(conv) {
+    const when = relativeWhen(new Date(conv.created_at));
+    const count = conv.message_count === 1 ? "1 mesaj" : `${conv.message_count} mesaje`;
+    return when ? `${when} · ${count}` : count;
+  }
+
+  function closeConversationPanel() {
+    conversationPanelOpen = false;
+    conversationPanelExpanded = false;
+    conversationPanel.hidden = true;
+    conversationTrigger.setAttribute("aria-expanded", "false");
+  }
+
+  function openConversationPanel() {
+    conversationPanelOpen = true;
+    conversationPanel.hidden = false;
+    conversationTrigger.setAttribute("aria-expanded", "true");
+  }
+
+  function toggleConversationPanel() {
+    if (conversationPanelOpen) closeConversationPanel();
+    else openConversationPanel();
+  }
+
+  function updateConversationTrigger() {
+    const current = conversationsCache.find((c) => c.id === currentConversationId);
+    conversationTriggerTitle.textContent = current ? formatConversationLabel(current) : "Fără conversații";
+  }
+
+  function selectConversation(id) {
+    closeConversationPanel();
+    if (id === currentConversationId) return;
+    currentConversationId = id;
+    localStorage.setItem(CONVERSATION_KEY, currentConversationId);
+    typingName = null;
+    forceScrollToBottom = true;
+    prevMessages = [];
+    resetDeleteConfirm();
+    clearDraftInput();
+    updateConversationTrigger();
+    renderConversationPanel();
+    poll();
+  }
+
+  async function deleteConversation(id) {
+    resetDeleteConfirm();
+    await fetch(`/conversations/${id}`, { method: "DELETE" });
+    if (id === currentConversationId) {
+      currentConversationId = null;
+      await switchToEmptyConversation();
+    } else {
+      await loadConversations();
+    }
+  }
+
+  function renderConversationPanel() {
+    conversationPanel.innerHTML = "";
+    if (conversationsCache.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "conversation-panel-empty";
+      empty.textContent = "Nicio conversație încă";
+      conversationPanel.appendChild(empty);
+      return;
+    }
+    const visibleConversations = conversationPanelExpanded
+      ? conversationsCache
+      : conversationsCache.slice(0, CONVERSATION_PANEL_LIMIT);
+
+    for (const conv of visibleConversations) {
+      const row = document.createElement("div");
+      row.className = "conversation-row" + (conv.id === currentConversationId ? " active" : "");
+      row.setAttribute("role", "option");
+      row.setAttribute("aria-selected", conv.id === currentConversationId ? "true" : "false");
+      row.addEventListener("click", () => selectConversation(conv.id));
+
+      const main = document.createElement("div");
+      main.className = "conversation-row-main";
+      const title = document.createElement("div");
+      title.className = "conversation-row-title";
+      title.textContent = conv.title;
+      const meta = document.createElement("div");
+      meta.className = "conversation-row-meta";
+      meta.textContent = formatConversationMeta(conv);
+      main.appendChild(title);
+      main.appendChild(meta);
+
+      const isConfirming = deleteConfirmId === conv.id;
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "conversation-row-delete" + (isConfirming ? " confirming" : "");
+      deleteBtn.textContent = isConfirming ? "Sigur?" : "🗑";
+      deleteBtn.setAttribute("aria-label", `Șterge conversația „${conv.title}”`);
+      deleteBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (deleteConfirmId !== conv.id) {
+          deleteConfirmId = conv.id;
+          if (deleteConfirmTimeout) clearTimeout(deleteConfirmTimeout);
+          deleteConfirmTimeout = setTimeout(resetDeleteConfirm, 3000);
+          renderConversationPanel();
+          return;
+        }
+        deleteConversation(conv.id);
+      });
+
+      row.appendChild(main);
+      row.appendChild(deleteBtn);
+      conversationPanel.appendChild(row);
+    }
+
+    if (!conversationPanelExpanded && conversationsCache.length > CONVERSATION_PANEL_LIMIT) {
+      const remaining = conversationsCache.length - CONVERSATION_PANEL_LIMIT;
+      const showMore = document.createElement("button");
+      showMore.type = "button";
+      showMore.className = "conversation-panel-more";
+      showMore.textContent = `Arată încă ${remaining} conversații`;
+      showMore.addEventListener("click", (event) => {
+        event.stopPropagation();
+        conversationPanelExpanded = true;
+        renderConversationPanel();
+      });
+      conversationPanel.appendChild(showMore);
+    }
+  }
+
+  function resetDeleteConfirm() {
+    if (deleteConfirmTimeout) {
+      clearTimeout(deleteConfirmTimeout);
+      deleteConfirmTimeout = null;
+    }
+    if (deleteConfirmId) {
+      deleteConfirmId = null;
+      renderConversationPanel();
+    }
   }
 
   async function loadConversations() {
     const response = await fetch("/conversations");
     const conversations = await response.json();
+    conversationsCache = conversations;
 
     const knownIds = new Set(conversations.map((c) => c.id));
     if (!currentConversationId || !knownIds.has(currentConversationId)) {
       currentConversationId = conversations[0] ? conversations[0].id : null;
     }
 
-    conversationSelect.innerHTML = "";
-    for (const conv of conversations) {
-      const option = document.createElement("option");
-      option.value = conv.id;
-      option.textContent = formatConversationLabel(conv);
-      if (conv.id === currentConversationId) option.selected = true;
-      conversationSelect.appendChild(option);
-    }
+    updateConversationTrigger();
+    renderConversationPanel();
 
     if (currentConversationId) {
       localStorage.setItem(CONVERSATION_KEY, currentConversationId);
@@ -894,15 +1115,8 @@
     hideMentionList();
   }
 
-  conversationSelect.addEventListener("change", () => {
-    currentConversationId = conversationSelect.value;
-    localStorage.setItem(CONVERSATION_KEY, currentConversationId);
-    typingName = null;
-    forceScrollToBottom = true;
-    prevMessages = [];
-    resetDeleteConfirm();
-    clearDraftInput();
-    poll();
+  conversationTrigger.addEventListener("click", () => {
+    toggleConversationPanel();
   });
 
   async function switchToEmptyConversation() {
@@ -925,35 +1139,6 @@
   }
 
   newConversationButton.addEventListener("click", async () => {
-    await switchToEmptyConversation();
-  });
-
-  let deleteConfirmTimeout = null;
-
-  function resetDeleteConfirm() {
-    if (deleteConfirmTimeout) {
-      clearTimeout(deleteConfirmTimeout);
-      deleteConfirmTimeout = null;
-      deleteConversationButton.textContent = "Șterge";
-      deleteConversationButton.classList.remove("confirming");
-    }
-  }
-
-  deleteConversationButton.addEventListener("click", async () => {
-    if (!currentConversationId) return;
-
-    // primul click cere confirmare inline (fără dialogul brut al browserului);
-    // al doilea click, în următoarele 3s, chiar șterge — altfel revine singur
-    if (!deleteConfirmTimeout) {
-      deleteConversationButton.textContent = "Sigur?";
-      deleteConversationButton.classList.add("confirming");
-      deleteConfirmTimeout = setTimeout(resetDeleteConfirm, 3000);
-      return;
-    }
-    resetDeleteConfirm();
-
-    await fetch(`/conversations/${currentConversationId}`, { method: "DELETE" });
-    currentConversationId = null;
     await switchToEmptyConversation();
   });
 
@@ -1004,8 +1189,15 @@
     if (!mentionListEl.hidden && !mentionListEl.contains(event.target) && event.target !== inputEl) {
       hideMentionList();
     }
-    if (deleteConfirmTimeout && event.target !== deleteConversationButton) {
-      resetDeleteConfirm();
+    resetDeleteConfirm();
+    if (conversationPanelOpen && !conversationDropdown.contains(event.target)) {
+      closeConversationPanel();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && conversationPanelOpen) {
+      closeConversationPanel();
     }
   });
 

@@ -1,3 +1,4 @@
+from personas_store import load_personas
 from routing import relevant_personas
 
 PERSONAS = [
@@ -36,3 +37,13 @@ def test_multiple_matches_preserve_persona_order():
 def test_matching_ignores_case_and_punctuation():
     result = relevant_personas("RELIGIILE, mitul, istoria!", PERSONAS)
     assert result == [PERSONAS[1]]
+
+
+def test_generic_bio_filler_words_dont_hijack_unrelated_questions():
+    # "Taximetristul Gigi" are "are o părere despre orice" în bio — un mesaj
+    # banal care folosește "părere" nu ar trebui să se potrivească doar cu el,
+    # excluzând restul personas (regresie: doar Gigi răspundea la "Ce părere
+    # aveți despre ultimele știri?", vezi personas.json).
+    personas = load_personas()
+    result = relevant_personas("Ați văzut ultimele știri? Ce părere aveți?", personas)
+    assert result == personas
