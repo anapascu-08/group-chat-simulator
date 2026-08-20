@@ -410,6 +410,7 @@
     to { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
   }
   #status { font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; margin-top: 0.35rem; }
+  #status.error { color: var(--accent-danger); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -1121,15 +1122,20 @@
     }
   }
 
+  function setStatus(text, isError = false) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle("error", isError);
+  }
+
   async function fetchMessages() {
     if (!currentConversationId) return;
     try {
       const response = await fetch(`/conversations/${currentConversationId}/messages`);
       render(await response.json());
       renderTypingBubble();
-      statusEl.textContent = "";
+      setStatus("");
     } catch (err) {
-      statusEl.textContent = "Nu pot ajunge la server...";
+      setStatus("Nu pot ajunge la server...", true);
     }
   }
 
@@ -1249,7 +1255,7 @@
     inputEl.value = "";
     autoGrow();
     hideMentionList();
-    statusEl.textContent = "Personas scriu...";
+    setStatus("Personas scriu...");
     submitButton.disabled = true;
     // cererea locală răspunde aproape instant — ținem butonul dezactivat cel
     // puțin 300ms ca userul să apuce să vadă feedback-ul vizual
@@ -1273,7 +1279,7 @@
         inputEl.value = message;
         autoGrow();
       }
-      statusEl.textContent = "Nu am putut trimite mesajul — încearcă din nou.";
+      setStatus("Nu am putut trimite mesajul — încearcă din nou.", true);
     } finally {
       submitButton.disabled = false;
       inputEl.focus();
