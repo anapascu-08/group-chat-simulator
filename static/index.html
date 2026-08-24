@@ -49,18 +49,16 @@
   * { box-sizing: border-box; }
   body {
     font-family: system-ui, -apple-system, sans-serif;
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 1rem;
+    margin: 0;
+    padding: 0;
     background: var(--bg-page);
     color: var(--text-primary);
     display: flex;
-    flex-direction: column;
     height: 100vh;
     height: 100dvh;
-    overflow-y: auto;
+    overflow: hidden;
   }
-  h1 { font-size: 1.25rem; flex-shrink: 0; }
+  h1 { font-size: 1.1rem; margin: 0; flex-shrink: 0; }
   #settings-bar {
     display: flex;
     align-items: center;
@@ -84,34 +82,39 @@
     background: var(--bg-surface);
     color: var(--text-primary);
   }
-  #personas-toggle {
-    background: none;
-    color: var(--text-muted);
-    padding: 0.2rem 0;
-    font-size: 0.8rem;
-  }
-  #personas-toggle:hover { color: var(--text-primary); }
-  #personas-bar {
+  #participants-sidebar {
+    width: 220px;
+    flex-shrink: 0;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 0.75rem;
-    padding: 0.6rem;
-    background: var(--bg-messages);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-  }
-  #personas-bar[hidden] { display: none; }
-  .persona-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
+    flex-direction: column;
+    height: 100%;
+    padding: 1rem 0.75rem;
     background: var(--bg-surface);
-    border: 1px solid var(--border-color-light);
+    border-left: 1px solid var(--border-color);
+    overflow-y: auto;
+  }
+  #participants-header {
     font-size: 0.8rem;
-    white-space: nowrap;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+    flex-shrink: 0;
+  }
+  #participants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-height: 0;
+  }
+  .persona-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    background: var(--bg-messages);
+    border: 1px solid var(--border-color-light);
+    font-size: 0.82rem;
   }
   .persona-chip-name {
     font-weight: 600;
@@ -122,70 +125,40 @@
     color: var(--text-muted);
     cursor: help;
   }
-  #conversation-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-  }
-  #conversation-dropdown {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-  }
-  #conversation-trigger {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    font-size: 0.85rem;
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    text-align: left;
-  }
-  #conversation-trigger-title {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  #conversation-trigger-arrow {
+  #conversation-sidebar {
+    width: 260px;
     flex-shrink: 0;
-    color: var(--text-muted);
-    font-size: 0.7rem;
-    transition: transform 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1rem 0.75rem;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
   }
-  #conversation-trigger[aria-expanded="true"] #conversation-trigger-arrow {
-    transform: rotate(180deg);
+  #sidebar-header {
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+  }
+  #new-conversation-button {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
   }
   #conversation-panel {
-    position: absolute;
-    top: calc(100% + 0.3rem);
-    left: 0;
-    right: 0;
-    max-height: 320px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 2px 10px var(--shadow-color);
-    z-index: 10;
   }
-  #conversation-panel[hidden] { display: none; }
   .conversation-row {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.5rem 0.6rem;
+    padding: 0.5rem 0.5rem;
+    margin-bottom: 0.15rem;
+    border-radius: 6px;
     cursor: pointer;
-    border-bottom: 1px solid var(--border-color-light);
   }
-  .conversation-row:last-child { border-bottom: none; }
   .conversation-row:hover { background: var(--mention-hover-bg); }
   .conversation-row.active { background: var(--mention-hover-bg); box-shadow: inset 3px 0 0 var(--accent-primary); }
   .conversation-row-main { flex: 1; min-width: 0; }
@@ -240,9 +213,36 @@
     background: transparent;
     color: var(--accent-primary);
     font-size: 0.8rem;
-    border-radius: 0;
+    border-radius: 6px;
   }
   .conversation-panel-more:hover { background: var(--mention-hover-bg); }
+  #main-column {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  @media (max-width: 700px) {
+    body { flex-direction: column; }
+    #conversation-sidebar {
+      width: 100%;
+      height: auto;
+      max-height: 35vh;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+    #main-column { height: auto; flex: 1; min-height: 0; }
+    #participants-sidebar {
+      width: 100%;
+      height: auto;
+      max-height: 25vh;
+      border-left: none;
+      border-top: 1px solid var(--border-color);
+    }
+  }
   #messages-wrap {
     position: relative;
     margin-bottom: 0.75rem;
@@ -457,37 +457,37 @@
 </style>
 </head>
 <body>
-  <h1>Group Chat Simulator</h1>
-  <div id="settings-bar">
-    <button type="button" id="personas-toggle" class="secondary" aria-controls="personas-bar" aria-expanded="false"></button>
-    <div id="username-bar">
-      <label for="username-input">Numele tău:</label>
-      <input type="text" id="username-input" placeholder="Tu" autocomplete="off" />
+  <aside id="conversation-sidebar">
+    <div id="sidebar-header">
+      <h1>Group Chat Simulator</h1>
     </div>
-  </div>
-  <div id="personas-bar" hidden></div>
-  <div id="conversation-bar">
-    <div id="conversation-dropdown">
-      <button type="button" id="conversation-trigger" aria-haspopup="listbox" aria-expanded="false">
-        <span id="conversation-trigger-title"></span>
-        <span id="conversation-trigger-arrow" aria-hidden="true">▾</span>
-      </button>
-      <div id="conversation-panel" role="listbox" hidden></div>
+    <button type="button" id="new-conversation-button">+ Conversație nouă</button>
+    <div id="conversation-panel" role="listbox"></div>
+  </aside>
+  <div id="main-column">
+    <div id="settings-bar">
+      <div id="username-bar">
+        <label for="username-input">Numele tău:</label>
+        <input type="text" id="username-input" placeholder="Tu" autocomplete="off" />
+      </div>
     </div>
-    <button type="button" id="new-conversation-button" class="secondary">+ Nouă</button>
-  </div>
-  <div id="messages-wrap">
-    <div id="messages"></div>
-    <button type="button" id="scroll-bottom-button" hidden>↓ Mesaje noi</button>
-  </div>
-  <form id="chat-form">
-    <div id="input-wrap">
-      <div id="mention-list" hidden></div>
-      <textarea id="message-input" placeholder="Scrie un mesaj..." autocomplete="off" rows="1" autofocus></textarea>
+    <div id="messages-wrap">
+      <div id="messages"></div>
+      <button type="button" id="scroll-bottom-button" hidden>↓ Mesaje noi</button>
     </div>
-    <button type="submit" id="send-button">Trimite</button>
-  </form>
-  <div id="status" role="status" aria-live="polite"></div>
+    <form id="chat-form">
+      <div id="input-wrap">
+        <div id="mention-list" hidden></div>
+        <textarea id="message-input" placeholder="Scrie un mesaj..." autocomplete="off" rows="1" autofocus></textarea>
+      </div>
+      <button type="submit" id="send-button">Trimite</button>
+    </form>
+    <div id="status" role="status" aria-live="polite"></div>
+  </div>
+  <aside id="participants-sidebar">
+    <div id="participants-header"></div>
+    <div id="participants-list"></div>
+  </aside>
 
 <script>
   const messagesWrapEl = document.getElementById("messages-wrap");
@@ -496,25 +496,19 @@
   const inputEl = document.getElementById("message-input");
   const statusEl = document.getElementById("status");
   const usernameInput = document.getElementById("username-input");
-  const conversationDropdown = document.getElementById("conversation-dropdown");
-  const conversationTrigger = document.getElementById("conversation-trigger");
-  const conversationTriggerTitle = document.getElementById("conversation-trigger-title");
   const conversationPanel = document.getElementById("conversation-panel");
   const newConversationButton = document.getElementById("new-conversation-button");
   const mentionListEl = document.getElementById("mention-list");
   const scrollBottomButton = document.getElementById("scroll-bottom-button");
   const submitButton = document.getElementById("send-button");
-  const personasBarEl = document.getElementById("personas-bar");
-  const personasToggle = document.getElementById("personas-toggle");
+  const participantsHeaderEl = document.getElementById("participants-header");
+  const participantsListEl = document.getElementById("participants-list");
 
   const HUMAN_NAME = "Tu";
   const USERNAME_KEY = "gcs_username";
   const CONVERSATION_KEY = "gcs_conversation_id";
-  const PERSONAS_EXPANDED_KEY = "gcs_personas_expanded";
-  let personasExpanded = localStorage.getItem(PERSONAS_EXPANDED_KEY) === "true";
   let currentConversationId = localStorage.getItem(CONVERSATION_KEY) || null;
   let conversationsCache = [];
-  let conversationPanelOpen = false;
   let conversationPanelExpanded = false;
   const CONVERSATION_PANEL_LIMIT = 15;
   let deleteConfirmId = null;
@@ -703,24 +697,14 @@
     return [p.bio, p.personality].filter(Boolean).join(" — ");
   }
 
-  function updatePersonasToggle() {
+  function updateParticipantsHeader() {
     const count = personas.length;
-    const arrow = personasExpanded ? "▾" : "▸";
     const participanti = count === 1 ? "participant" : "participanți";
-    const actiune = personasExpanded ? "ascunde" : "vedea";
-    personasToggle.textContent = `${count} ${participanti} în grup, apasă pentru a ${actiune} ${arrow}`;
-    personasToggle.setAttribute("aria-expanded", String(personasExpanded));
-    personasBarEl.hidden = !personasExpanded;
+    participantsHeaderEl.textContent = `${count} ${participanti} în grup`;
   }
 
-  personasToggle.addEventListener("click", () => {
-    personasExpanded = !personasExpanded;
-    localStorage.setItem(PERSONAS_EXPANDED_KEY, String(personasExpanded));
-    updatePersonasToggle();
-  });
-
-  function renderPersonasBar() {
-    const bar = personasBarEl;
+  function renderParticipantsList() {
+    const bar = participantsListEl;
     bar.innerHTML = "";
     for (const p of personas) {
       const chip = document.createElement("span");
@@ -1039,31 +1023,7 @@
     return when ? `${when} · ${count}` : count;
   }
 
-  function closeConversationPanel() {
-    conversationPanelOpen = false;
-    conversationPanelExpanded = false;
-    conversationPanel.hidden = true;
-    conversationTrigger.setAttribute("aria-expanded", "false");
-  }
-
-  function openConversationPanel() {
-    conversationPanelOpen = true;
-    conversationPanel.hidden = false;
-    conversationTrigger.setAttribute("aria-expanded", "true");
-  }
-
-  function toggleConversationPanel() {
-    if (conversationPanelOpen) closeConversationPanel();
-    else openConversationPanel();
-  }
-
-  function updateConversationTrigger() {
-    const current = conversationsCache.find((c) => c.id === currentConversationId);
-    conversationTriggerTitle.textContent = current ? current.title : "Fără conversații";
-  }
-
   function selectConversation(id) {
-    closeConversationPanel();
     if (id === currentConversationId) return;
     currentConversationId = id;
     localStorage.setItem(CONVERSATION_KEY, currentConversationId);
@@ -1073,7 +1033,6 @@
     resetDeleteConfirm();
     cancelRename();
     clearDraftInput();
-    updateConversationTrigger();
     renderConversationPanel();
     poll();
   }
@@ -1253,7 +1212,6 @@
       currentConversationId = conversations[0] ? conversations[0].id : null;
     }
 
-    updateConversationTrigger();
     renderConversationPanel();
 
     if (currentConversationId) {
@@ -1300,10 +1258,6 @@
     autoGrow();
     hideMentionList();
   }
-
-  conversationTrigger.addEventListener("click", () => {
-    toggleConversationPanel();
-  });
 
   async function switchToEmptyConversation() {
     // dacă există deja o conversație goală, o refolosim în loc să mai creăm una
@@ -1377,15 +1331,6 @@
     }
     resetDeleteConfirm();
     cancelRename();
-    if (conversationPanelOpen && !conversationDropdown.contains(event.target)) {
-      closeConversationPanel();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && conversationPanelOpen) {
-      closeConversationPanel();
-    }
   });
 
   formEl.addEventListener("submit", async (event) => {
@@ -1428,8 +1373,8 @@
 
   async function init() {
     await loadPersonas();
-    renderPersonasBar();
-    updatePersonasToggle();
+    renderParticipantsList();
+    updateParticipantsHeader();
     await loadConversations();
     await poll();
     setInterval(poll, 1500);
