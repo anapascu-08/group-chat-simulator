@@ -123,8 +123,28 @@
   .persona-chip .info-icon {
     font-size: 0.75rem;
     color: var(--text-muted);
-    cursor: help;
+    cursor: pointer;
+    flex-shrink: 0;
   }
+  .persona-chip .info-icon:hover,
+  .persona-chip .info-icon:focus-visible {
+    color: var(--text-primary);
+  }
+  #persona-tooltip {
+    position: fixed;
+    max-width: 240px;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 16px var(--shadow-color);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--text-primary);
+    z-index: 100;
+    pointer-events: none;
+  }
+  #persona-tooltip[hidden] { display: none; }
   #conversation-sidebar {
     width: 260px;
     flex-shrink: 0;
@@ -488,6 +508,7 @@
     <div id="participants-header"></div>
     <div id="participants-list"></div>
   </aside>
+  <div id="persona-tooltip" role="tooltip" hidden></div>
 
 <script>
   const messagesWrapEl = document.getElementById("messages-wrap");
@@ -503,6 +524,8 @@
   const submitButton = document.getElementById("send-button");
   const participantsHeaderEl = document.getElementById("participants-header");
   const participantsListEl = document.getElementById("participants-list");
+  const participantsSidebarEl = document.getElementById("participants-sidebar");
+  const personaTooltipEl = document.getElementById("persona-tooltip");
 
   const HUMAN_NAME = "Tu";
   const USERNAME_KEY = "gcs_username";
@@ -697,6 +720,39 @@
     return [p.bio, p.personality].filter(Boolean).join(" — ");
   }
 
+  let personaTooltipTarget = null;
+
+  function positionPersonaTooltip(target) {
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = personaTooltipEl.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.bottom + 6;
+    if (left + tooltipRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - tooltipRect.width - 8;
+    }
+    if (top + tooltipRect.height > window.innerHeight - 8) {
+      top = rect.top - tooltipRect.height - 6;
+    }
+    personaTooltipEl.style.left = `${Math.max(8, left)}px`;
+    personaTooltipEl.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function showPersonaTooltip(target, text) {
+    personaTooltipTarget = target;
+    personaTooltipEl.textContent = text;
+    personaTooltipEl.hidden = false;
+    positionPersonaTooltip(target);
+  }
+
+  function hidePersonaTooltip() {
+    personaTooltipTarget = null;
+    personaTooltipEl.hidden = true;
+  }
+
+  // sidebar-ul participanților scrolează independent — dacă tooltip-ul rămâne
+  // fix pe ecran în timp ce iconița se mișcă dedesubt, ajunge dezaliniat
+  participantsSidebarEl.addEventListener("scroll", hidePersonaTooltip);
+
   function updateParticipantsHeader() {
     const count = personas.length;
     const participanti = count === 1 ? "participant" : "participanți";
@@ -718,10 +774,23 @@
       chip.appendChild(nameEl);
       const tooltip = tooltipFor(p);
       if (tooltip) {
-        chip.title = tooltip;
         const infoIcon = document.createElement("span");
         infoIcon.className = "info-icon";
         infoIcon.textContent = "ⓘ";
+        infoIcon.setAttribute("role", "button");
+        infoIcon.setAttribute("tabindex", "0");
+        infoIcon.setAttribute("aria-label", `Detalii despre ${p.name}`);
+        infoIcon.addEventListener("mouseenter", () => showPersonaTooltip(infoIcon, tooltip));
+        infoIcon.addEventListener("mouseleave", hidePersonaTooltip);
+        infoIcon.addEventListener("focus", () => showPersonaTooltip(infoIcon, tooltip));
+        infoIcon.addEventListener("blur", hidePersonaTooltip);
+        infoIcon.addEventListener("click", (event) => {
+          // pe touch, "focus" și "click" se declanșează amândouă la tap —
+          // arătăm din nou (idempotent) în loc de toggle, ca să nu se închidă
+          // imediat după ce focus-ul a deschis-o
+          event.stopPropagation();
+          showPersonaTooltip(infoIcon, tooltip);
+        });
         chip.appendChild(infoIcon);
       }
       bar.appendChild(chip);
@@ -1331,6 +1400,9 @@
     }
     resetDeleteConfirm();
     cancelRename();
+    if (personaTooltipTarget && event.target !== personaTooltipTarget) {
+      hidePersonaTooltip();
+    }
   });
 
   formEl.addEventListener("submit", async (event) => {
