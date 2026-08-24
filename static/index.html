@@ -165,6 +165,18 @@
     margin-bottom: 0.75rem;
     flex-shrink: 0;
   }
+  #conversation-search {
+    width: 100%;
+    margin-bottom: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    flex-shrink: 0;
+  }
+  #conversation-search::placeholder { color: var(--text-muted); }
   #conversation-panel {
     flex: 1;
     min-height: 0;
@@ -482,6 +494,7 @@
       <h1>Group Chat Simulator</h1>
     </div>
     <button type="button" id="new-conversation-button">+ Conversație nouă</button>
+    <input type="search" id="conversation-search" placeholder="Caută conversații..." autocomplete="off" />
     <div id="conversation-panel" role="listbox"></div>
   </aside>
   <div id="main-column">
@@ -519,6 +532,7 @@
   const usernameInput = document.getElementById("username-input");
   const conversationPanel = document.getElementById("conversation-panel");
   const newConversationButton = document.getElementById("new-conversation-button");
+  const conversationSearchInput = document.getElementById("conversation-search");
   const mentionListEl = document.getElementById("mention-list");
   const scrollBottomButton = document.getElementById("scroll-bottom-button");
   const submitButton = document.getElementById("send-button");
@@ -533,6 +547,7 @@
   let currentConversationId = localStorage.getItem(CONVERSATION_KEY) || null;
   let conversationsCache = [];
   let conversationPanelExpanded = false;
+  let conversationSearchQuery = "";
   const CONVERSATION_PANEL_LIMIT = 15;
   let deleteConfirmId = null;
   let deleteConfirmTimeout = null;
@@ -1127,9 +1142,23 @@
       conversationPanel.appendChild(empty);
       return;
     }
+
+    const query = fold(conversationSearchQuery.trim());
+    const filteredConversations = query
+      ? conversationsCache.filter((c) => fold(c.title).includes(query))
+      : conversationsCache;
+
+    if (filteredConversations.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "conversation-panel-empty";
+      empty.textContent = "Nicio conversație găsită";
+      conversationPanel.appendChild(empty);
+      return;
+    }
+
     const visibleConversations = conversationPanelExpanded
-      ? conversationsCache
-      : conversationsCache.slice(0, CONVERSATION_PANEL_LIMIT);
+      ? filteredConversations
+      : filteredConversations.slice(0, CONVERSATION_PANEL_LIMIT);
 
     for (const conv of visibleConversations) {
       const isRenaming = renamingId === conv.id;
@@ -1214,8 +1243,8 @@
       conversationPanel.appendChild(row);
     }
 
-    if (!conversationPanelExpanded && conversationsCache.length > CONVERSATION_PANEL_LIMIT) {
-      const remaining = conversationsCache.length - CONVERSATION_PANEL_LIMIT;
+    if (!conversationPanelExpanded && filteredConversations.length > CONVERSATION_PANEL_LIMIT) {
+      const remaining = filteredConversations.length - CONVERSATION_PANEL_LIMIT;
       const showMore = document.createElement("button");
       showMore.type = "button";
       showMore.className = "conversation-panel-more";
@@ -1349,6 +1378,12 @@
 
   newConversationButton.addEventListener("click", async () => {
     await switchToEmptyConversation();
+  });
+
+  conversationSearchInput.addEventListener("input", () => {
+    conversationSearchQuery = conversationSearchInput.value;
+    conversationPanelExpanded = false;
+    renderConversationPanel();
   });
 
   function autoGrow() {
